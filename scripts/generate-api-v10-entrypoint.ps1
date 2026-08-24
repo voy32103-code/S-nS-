@@ -1,0 +1,19 @@
+param([string]$Source="backend/SanSo.Api.V6/ProgramCanonicalV9.cs",[string]$Output="backend/SanSo.Api.V6/ProgramCanonicalV10.cs",[string]$Targets="backend/SanSo.Api.V6/Directory.Build.targets",[string]$Props="backend/SanSo.Api.V6/Directory.Build.props")
+$ErrorActionPreference="Stop";$text=Get-Content -LiteralPath $Source -Raw -Encoding UTF8
+$registration='    builder.Services.AddSingleton<SanSo.Api.V6.PostgresNotificationStoreV1>();';$text=$text.Replace($registration,$registration+[Environment]::NewLine+'    builder.Services.AddSingleton<SanSo.Api.V6.PostgresSettlementImportStoreV1>();')
+$helper='SanSo.Api.V6.PostgresOnboardingStoreV1? OnboardingStore() => app.Services.GetService<SanSo.Api.V6.PostgresOnboardingStoreV1>();';$text=$text.Replace($helper,$helper+[Environment]::NewLine+'SanSo.Api.V6.PostgresSettlementImportStoreV1 SettlementStore() => app.Services.GetRequiredService<SanSo.Api.V6.PostgresSettlementImportStoreV1>();')
+$anchor='Prefer(app.MapGet("/api/onboarding", async (HttpRequest r, CancellationToken ct) =>'
+$routes=@'
+Prefer(app.MapPost("/api/imports/settlements", async (HttpRequest r, CancellationToken ct) =>
+{
+    var principal=Require(r,"tax.review");if(!Db())return Results.Json(new{code="DATABASE_REQUIRED"},statusCode:503);if(!r.HasFormContentType)return Results.BadRequest(new{code="MULTIPART_REQUIRED"});var file=(await r.ReadFormAsync(ct)).Files.GetFile("file");if(file is null)return Results.BadRequest(new{code="FILE_REQUIRED"});if(file.Length>10*1024*1024)return Results.BadRequest(new{code="FILE_TOO_LARGE"});if(!Path.GetExtension(file.FileName).Equals(".csv",StringComparison.OrdinalIgnoreCase)||file.ContentType is not("text/csv"or"application/csv"or"application/vnd.ms-excel"or"application/octet-stream"))return Results.BadRequest(new{code="UNSUPPORTED_FILE_TYPE"});try{await using var stream=file.OpenReadStream();var parsed=SanSo.Api.V6.SettlementCsvParserV1.Parse(stream);return Results.Ok(await SettlementStore().Import(Tenant(r),parsed,principal.UserId,ct));}catch(DecoderFallbackException){return Results.BadRequest(new{code="ENCODING_INVALID",hint="Save CSV as UTF-8"});}catch(InvalidDataException e){return Results.BadRequest(new{code=e.Message});}catch(OverflowException){return Results.BadRequest(new{code="AMOUNT_SUM_OVERFLOW"});}
+}));
+Prefer(app.MapGet("/api/reconciliations/{runId}",async(HttpRequest r,string runId,CancellationToken ct)=>
+{
+    Require(r,"finance.read");if(!Db())return Results.Json(new{code="DATABASE_REQUIRED"},statusCode:503);if(!Guid.TryParse(runId,out _))return Results.BadRequest(new{code="RUN_ID_INVALID"});var result=await SettlementStore().GetRun(Tenant(r),runId,ct);return result is null?Results.NotFound(new{code="RECONCILIATION_NOT_FOUND"}):Results.Ok(result);
+}));
+
+'@
+if(-not$text.Contains($anchor)){throw'ONBOARDING_ANCHOR_NOT_FOUND'};$text=$text.Replace($anchor,$routes+$anchor);$text=$text.Replace('api = "v9"','api = "v10"');[System.IO.File]::WriteAllText((Join-Path(Get-Location)$Output),$text,[System.Text.UTF8Encoding]::new($false))
+$targetsText=Get-Content -LiteralPath $Targets -Raw -Encoding UTF8;$targetsText=$targetsText.Replace('ProgramCanonicalV9.cs','ProgramCanonicalV10.cs');[System.IO.File]::WriteAllText((Join-Path(Get-Location)$Targets),$targetsText,[System.Text.UTF8Encoding]::new($false))
+$propsText=Get-Content -LiteralPath $Props -Raw -Encoding UTF8;if(-not$propsText.Contains('PostgresSettlementImportStoreV1.cs')){$propsText=$propsText.Replace('    <Compile Include="PostgresNotificationStoreV1.cs" />','    <Compile Include="PostgresNotificationStoreV1.cs" />'+[Environment]::NewLine+'    <Compile Include="PostgresSettlementImportStoreV1.cs" />')};[System.IO.File]::WriteAllText((Join-Path(Get-Location)$Props),$propsText,[System.Text.UTF8Encoding]::new($false));"API_V10_ENTRYPOINT_GENERATED=$Output"

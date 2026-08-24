@@ -1,0 +1,41 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Npgsql;
+
+namespace SanSo.Api.V6;
+
+public sealed record SettlementPreviewV1(string PreviewId,string PreviewToken,DateTimeOffset ExpiresAt,string Format,string Checksum,string SettlementCode,long ExpectedAmount,long ActualAmount,long Difference,int LineCount,IReadOnlyList<SettlementImportRowV1> Rows,bool AlreadyConfirmed,string? ConfirmedRunId);
+public sealed record SettlementConfirmRequestV1(string PreviewToken,string Checksum);
+
+public static class SettlementFileParserV1
+{
+    private const int MaxBytes=10*1024*1024;
+    public static SettlementImportV1 Csv(byte[] bytes)=>SettlementCsvParserV1.Parse(new MemoryStream(bytes));
+    public static SettlementImportV1 Xlsx(byte[] bytes)
+    {
+        if(bytes.Length>MaxBytes)throw new InvalidDataException("FILE_TOO_LARGE");using var memory=new MemoryStream(bytes);using var doc=SpreadsheetDocument.Open(memory,false);var wb=doc.WorkbookPart??throw new InvalidDataException("WORKBOOK_MISSING");var shared=wb.SharedStringTablePart?.SharedStringTable.Elements<SharedStringItem>().Select(x=>x.InnerText).ToList()??[];var sheet=wb.Workbook.Sheets?.Elements<Sheet>().FirstOrDefault()??throw new InvalidDataException("SHEET_MISSING");var part=(WorksheetPart)wb.GetPartById(sheet.Id!);var rows=part.Worksheet.Descendants<Row>().ToList();if(rows.Count<2)throw new InvalidDataException("SETTLEMENT_FILE_EMPTY");if(rows.Count>10001)throw new InvalidDataException("ROW_LIMIT_EXCEEDED");var output=new StringBuilder();foreach(var row in rows){var cells=row.Elements<Cell>().ToList();if(cells.Count>20)throw new InvalidDataException("COLUMN_LIMIT_EXCEEDED");if(cells.Any(x=>x.CellFormula is not null))throw new InvalidDataException("FORMULA_NOT_ALLOWED");var values=Enumerable.Repeat("",20).ToArray();var last=-1;foreach(var cell in cells){var index=ColumnIndex(cell.CellReference?.Value);if(index<0||index>=20)throw new InvalidDataException("COLUMN_LIMIT_EXCEEDED");values[index]=Value(cell,shared);last=Math.Max(last,index);}output.AppendLine(string.Join(',',values.Take(last+1).Select(Escape)));}var normalized=Encoding.UTF8.GetBytes(output.ToString());var parsed=SettlementCsvParserV1.Parse(new MemoryStream(normalized));return parsed with{Checksum=Hash(bytes)};
+    }
+    public static byte[] Read(Stream input){using var m=new MemoryStream();input.CopyTo(m);if(m.Length>MaxBytes)throw new InvalidDataException("FILE_TOO_LARGE");return m.ToArray();}
+    private static string Value(Cell c,List<string> shared){if(c.DataType?.Value==CellValues.SharedString&&int.TryParse(c.CellValue?.Text,out var i)&&i>=0&&i<shared.Count)return shared[i];return c.CellValue?.Text??c.InnerText??"";}
+    private static int ColumnIndex(string? reference){if(string.IsNullOrWhiteSpace(reference))return -1;var value=0;foreach(var ch in reference){if(!char.IsLetter(ch))break;value=checked(value*26+(char.ToUpperInvariant(ch)-'A'+1));}return value-1;}
+    private static string Escape(string value)=>'"'+value.Replace("\"","\"\"")+'"';
+    private static string Hash(byte[] value)=>Convert.ToHexString(SHA256.HashData(value)).ToLowerInvariant();
+}
+
+public sealed class PostgresSettlementImportWorkflowV1(NpgsqlDataSource dataSource,PostgresSettlementImportStoreV1 importer)
+{
+    public async Task<SettlementPreviewV1> Stage(string tenant,SettlementImportV1 import,string format,CancellationToken ct)
+    {
+        var tenantId=Guid.Parse(tenant);var token=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();var tokenHash=Hash(token);var expires=DateTimeOffset.UtcNow.AddMinutes(30);var payload=JsonSerializer.Serialize(import);await using var c=await dataSource.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tx,tenant,ct);await using var existing=c.CreateCommand();existing.Transaction=tx;existing.CommandText="SELECT id::text,status,confirmed_run_id::text FROM settlement_import_previews WHERE organization_id=$1 AND checksum=$2";existing.Parameters.AddWithValue(tenantId);existing.Parameters.AddWithValue(import.Checksum);await using var er=await existing.ExecuteReaderAsync(ct);if(await er.ReadAsync(ct)&&er.GetString(1)=="CONFIRMED"){var id=er.GetString(0);var run=er.IsDBNull(2)?null:er.GetString(2);await er.CloseAsync();await tx.CommitAsync(ct);return View(id,"",expires,format,import,true,run);}await er.CloseAsync();await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="INSERT INTO settlement_import_previews(organization_id,checksum,token_hash,format,normalized_payload,status,expires_at)VALUES($1,$2,$3,$4,$5::jsonb,'PREVIEWED',$6)ON CONFLICT(organization_id,checksum)DO UPDATE SET token_hash=EXCLUDED.token_hash,format=EXCLUDED.format,normalized_payload=EXCLUDED.normalized_payload,status='PREVIEWED',expires_at=EXCLUDED.expires_at RETURNING id::text";q.Parameters.AddWithValue(tenantId);q.Parameters.AddWithValue(import.Checksum);q.Parameters.AddWithValue(tokenHash);q.Parameters.AddWithValue(format);q.Parameters.AddWithValue(payload);q.Parameters.AddWithValue(expires);var previewId=(await q.ExecuteScalarAsync(ct))?.ToString()??throw new InvalidOperationException("SETTLEMENT_PREVIEW_WRITE_FAILED");await tx.CommitAsync(ct);return View(previewId,token,expires,format,import,false,null);
+    }
+    public async Task<SettlementImportResultV1> Confirm(string tenant,SettlementConfirmRequestV1 request,string actor,CancellationToken ct)
+    {
+        var tenantId=Guid.Parse(tenant);SettlementImportV1 import;string previewId;await using(var c=await dataSource.OpenConnectionAsync(ct)){await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tx,tenant,ct);await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="SELECT id::text,normalized_payload::text,status,confirmed_run_id::text FROM settlement_import_previews WHERE organization_id=$1 AND checksum=$2 AND token_hash=$3 AND expires_at>now()";q.Parameters.AddWithValue(tenantId);q.Parameters.AddWithValue(request.Checksum);q.Parameters.AddWithValue(Hash(request.PreviewToken));await using var r=await q.ExecuteReaderAsync(ct);if(!await r.ReadAsync(ct))throw new InvalidOperationException("SETTLEMENT_PREVIEW_INVALID_OR_EXPIRED");previewId=r.GetString(0);var json=r.GetString(1);var status=r.GetString(2);var confirmedRun=r.IsDBNull(3)?null:r.GetString(3);await r.CloseAsync();if(status=="CONFIRMED"&&confirmedRun is null)throw new InvalidOperationException("CONFIRMED_RUN_NOT_FOUND");import=JsonSerializer.Deserialize<SettlementImportV1>(json)??throw new InvalidOperationException("SETTLEMENT_PREVIEW_PAYLOAD_INVALID");await tx.CommitAsync(ct);}var result=await importer.Import(tenant,import,actor,ct);await using(var c=await dataSource.OpenConnectionAsync(ct)){await using var tx=await c.BeginTransactionAsync(ct);await SetTenant(c,tx,tenant,ct);await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="UPDATE settlement_import_previews SET status='CONFIRMED',confirmed_run_id=$3::uuid,confirmed_at=now() WHERE organization_id=$1 AND id=$2::uuid";q.Parameters.AddWithValue(tenantId);q.Parameters.AddWithValue(previewId);q.Parameters.AddWithValue(result.RunId);await q.ExecuteNonQueryAsync(ct);await tx.CommitAsync(ct);}return result;
+    }
+    private static SettlementPreviewV1 View(string id,string token,DateTimeOffset expires,string format,SettlementImportV1 import,bool confirmed,string? run){var expected=checked(import.Rows.Sum(x=>x.ExpectedAmount));var actual=checked(import.Rows.Sum(x=>x.ActualAmount));return new(id,token,expires,format,import.Checksum,import.SettlementCode,expected,actual,checked(actual-expected),import.Rows.Count,import.Rows,confirmed,run);}
+    private static async Task SetTenant(NpgsqlConnection c,NpgsqlTransaction tx,string tenant,CancellationToken ct){await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="SELECT set_config('app.current_organization_id',$1,true)";q.Parameters.AddWithValue(tenant);await q.ExecuteNonQueryAsync(ct);}
+    private static string Hash(string value)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+}

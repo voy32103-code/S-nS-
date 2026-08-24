@@ -1,0 +1,45 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Npgsql;
+using SanSo.Import;
+
+namespace SanSo.Api.V4;
+
+public sealed record StoredPreview(string BatchId,string PreviewToken,DateTimeOffset ExpiresAt,ImportPreview Preview);
+public sealed record StoredConfirmation(string BatchId,string Checksum,int AcceptedRows,int RejectedRows,bool Duplicate);
+
+public sealed class PostgresImportStagingStore(NpgsqlDataSource dataSource)
+{
+    public async Task<StoredPreview> Stage(string tenant,ImportPreview preview,CancellationToken ct)
+    {
+        var token=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();var expires=DateTimeOffset.UtcNow.AddMinutes(30);
+        await using var c=await Open(tenant,ct);await using var tx=await c.BeginTransactionAsync(ct);
+        await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="INSERT INTO import_staging_batches(organization_id,checksum,token_hash,format,template_version,status,expires_at) VALUES($1::uuid,$2,$3,$4,$5,'PREVIEWED',$6) RETURNING id::text";
+        q.Parameters.AddWithValue(tenant);q.Parameters.AddWithValue(preview.Checksum);q.Parameters.AddWithValue(Hash(token));q.Parameters.AddWithValue(preview.Format);q.Parameters.AddWithValue(preview.TemplateVersion);q.Parameters.AddWithValue(expires);
+        var id=(string)(await q.ExecuteScalarAsync(ct)??throw new InvalidOperationException("IMPORT_STAGE_FAILED"));
+        foreach(var row in preview.Rows){await using var insert=c.CreateCommand();insert.Transaction=tx;insert.CommandText="INSERT INTO import_staging_rows(organization_id,batch_id,row_number,event_id,normalized_payload,errors) VALUES($1::uuid,$2::uuid,$3,$4,$5::jsonb,$6::jsonb)";insert.Parameters.AddWithValue(tenant);insert.Parameters.AddWithValue(id);insert.Parameters.AddWithValue(row.RowNumber);insert.Parameters.AddWithValue($"file:{preview.Checksum}:row:{row.RowNumber}");insert.Parameters.AddWithValue(JsonSerializer.Serialize(new{row.OrderCode,row.Amount,row.OccurredAt,row.Raw}));insert.Parameters.AddWithValue(JsonSerializer.Serialize(row.Errors));await insert.ExecuteNonQueryAsync(ct);}
+        await tx.CommitAsync(ct);return new(id,token,expires,preview);
+    }
+
+    public async Task<StoredConfirmation> Confirm(string tenant,string token,string checksum,string actorId,CancellationToken ct)
+    {
+        await using var c=await Open(tenant,ct);await using var tx=await c.BeginTransactionAsync(System.Data.IsolationLevel.Serializable,ct);
+        await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="SELECT id::text,checksum,status,expires_at FROM import_staging_batches WHERE organization_id=$1::uuid AND token_hash=$2 FOR UPDATE";q.Parameters.AddWithValue(tenant);q.Parameters.AddWithValue(Hash(token));
+        await using var reader=await q.ExecuteReaderAsync(ct);if(!await reader.ReadAsync(ct))throw new InvalidOperationException("PREVIEW_NOT_FOUND");var id=reader.GetString(0);var stored=reader.GetString(1);var status=reader.GetString(2);var expires=reader.GetFieldValue<DateTimeOffset>(3);await reader.CloseAsync();
+        if(!string.Equals(stored,checksum,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("CHECKSUM_MISMATCH");if(status!="PREVIEWED")throw new InvalidOperationException("PREVIEW_ALREADY_CONFIRMED");if(expires<=DateTimeOffset.UtcNow)throw new InvalidOperationException("PREVIEW_EXPIRED");
+        await using var dup=c.CreateCommand();dup.Transaction=tx;dup.CommandText="SELECT 1 FROM import_staging_batches WHERE organization_id=$1::uuid AND checksum=$2 AND status='CONFIRMED' AND id<>$3::uuid";dup.Parameters.AddWithValue(tenant);dup.Parameters.AddWithValue(checksum);dup.Parameters.AddWithValue(id);
+        if(await dup.ExecuteScalarAsync(ct)is not null){await using var consume=c.CreateCommand();consume.Transaction=tx;consume.CommandText="UPDATE import_staging_batches SET status='EXPIRED' WHERE organization_id=$1::uuid AND id=$2::uuid";consume.Parameters.AddWithValue(tenant);consume.Parameters.AddWithValue(id);await consume.ExecuteNonQueryAsync(ct);await tx.CommitAsync(ct);return new(id,checksum,0,0,true);}
+        await using var post=c.CreateCommand();post.Transaction=tx;post.CommandText="""
+INSERT INTO raw_events(organization_id,source,source_event_id,event_type,schema_version,payload,checksum)
+SELECT organization_id,'file-import',event_id,'ORDER_IMPORTED','1',normalized_payload,encode(sha256(convert_to(normalized_payload::text,'UTF8')),'hex')
+FROM import_staging_rows WHERE organization_id=$1::uuid AND batch_id=$2::uuid AND errors='[]'::jsonb
+ON CONFLICT(organization_id,source,source_event_id) DO NOTHING;
+UPDATE import_staging_batches SET status='CONFIRMED',confirmed_at=now(),confirmed_by=$3::uuid WHERE organization_id=$1::uuid AND id=$2::uuid;
+""";post.Parameters.AddWithValue(tenant);post.Parameters.AddWithValue(id);post.Parameters.AddWithValue(actorId);await post.ExecuteNonQueryAsync(ct);
+        await using var count=c.CreateCommand();count.Transaction=tx;count.CommandText="SELECT count(*) FILTER(WHERE errors='[]'::jsonb)::int,count(*) FILTER(WHERE errors<>'[]'::jsonb)::int FROM import_staging_rows WHERE organization_id=$1::uuid AND batch_id=$2::uuid";count.Parameters.AddWithValue(tenant);count.Parameters.AddWithValue(id);await using var counts=await count.ExecuteReaderAsync(ct);await counts.ReadAsync(ct);var accepted=counts.GetInt32(0);var rejected=counts.GetInt32(1);await counts.CloseAsync();await tx.CommitAsync(ct);return new(id,checksum,accepted,rejected,false);
+    }
+
+    private async Task<NpgsqlConnection> Open(string tenant,CancellationToken ct){var c=await dataSource.OpenConnectionAsync(ct);await using var q=c.CreateCommand();q.CommandText="SELECT set_config('app.current_organization_id',$1,false)";q.Parameters.AddWithValue(tenant);await q.ExecuteNonQueryAsync(ct);return c;}
+    private static string Hash(string value)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+}

@@ -1,0 +1,12 @@
+using System.Net;using System.Net.Http.Json;using Microsoft.AspNetCore.Mvc.Testing;
+namespace SanSo.Api.Tests;
+public sealed class ApiBoundaryTests: IClassFixture<WebApplicationFactory<Program>>
+{
+ private readonly HttpClient client;public ApiBoundaryTests(WebApplicationFactory<Program> factory)=>client=factory.CreateClient();
+ [Fact]public async Task HealthHasSecurityHeaders(){var response=await client.GetAsync("/health");Assert.Equal(HttpStatusCode.OK,response.StatusCode);Assert.Equal("nosniff",response.Headers.GetValues("X-Content-Type-Options").Single());Assert.Equal("DENY",response.Headers.GetValues("X-Frame-Options").Single());}
+ [Fact]public async Task OwnerLoginWithoutMfaReturnsSafe401(){var response=await client.PostAsJsonAsync("/api/auth/login",new{email="owner.an-nhien@example.invalid",password="Demo-Only-Password-2026!",tenantId="tenant-an-nhien"});Assert.Equal(HttpStatusCode.Unauthorized,response.StatusCode);var body=await response.Content.ReadAsStringAsync();Assert.Contains("MFA_REQUIRED",body);Assert.DoesNotContain("Password-2026",body);Assert.DoesNotContain("stack",body,StringComparison.OrdinalIgnoreCase);}
+ [Fact]public async Task RawSourceCannotCrossTenantBoundary(){var posted=await Post("tenant-a","/api/raw-events",new{source="csv",eventId="evt-a",eventType="ORDER",payload="{}",schemaVersion="1"});Assert.Equal(HttpStatusCode.OK,posted.StatusCode);var envelope=await posted.Content.ReadFromJsonAsync<RawResponse>();using var request=new HttpRequestMessage(HttpMethod.Get,$"/api/raw-events/{envelope!.Event.Id}");request.Headers.Add("X-Tenant-Id","tenant-b");var denied=await client.SendAsync(request);Assert.Equal(HttpStatusCode.NotFound,denied.StatusCode);}
+ [Fact]public async Task InventoryLastUnitReturnsConflictForSecondOrder(){await Post("tenant-i","/api/inventory/SKU-LAST/seed",new{onHand=1});var first=await Post("tenant-i","/api/inventory/SKU-LAST/reserve",new{quantity=1,sourceKey="a:1"});var second=await Post("tenant-i","/api/inventory/SKU-LAST/reserve",new{quantity=1,sourceKey="b:2"});Assert.Equal(HttpStatusCode.OK,first.StatusCode);Assert.Equal(HttpStatusCode.Conflict,second.StatusCode);}
+ private async Task<HttpResponseMessage> Post(string tenant,string path,object body){using var request=new HttpRequestMessage(HttpMethod.Post,path){Content=JsonContent.Create(body)};request.Headers.Add("X-Tenant-Id",tenant);return await client.SendAsync(request);}
+ private record RawResponse(RawInner Event,bool Duplicate);private record RawInner(string Id);
+}

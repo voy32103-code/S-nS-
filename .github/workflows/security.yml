@@ -1,0 +1,24 @@
+name: security-and-contract
+on: [push, pull_request]
+permissions: {contents: read, security-events: write}
+jobs:
+  dependency-and-secret-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '9.0.x'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: dotnet list SanSo.sln package --vulnerable --include-transitive
+      - run: npm ci && npm audit --audit-level=high
+        working-directory: frontend
+      - run: npm ci && npm test
+        working-directory: e2e
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with: {languages: csharp,javascript-typescript}
+      - uses: github/codeql-action/analyze@v3

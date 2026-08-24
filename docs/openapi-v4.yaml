@@ -1,0 +1,207 @@
+openapi: 3.1.0
+info:
+  title: SànSổ API V4
+  version: 0.4.0-pilot
+  description: Pilot contract. Tax results may be NEEDS_REVIEW; no endpoint submits tax filings or payments.
+servers:
+  - url: http://localhost:5080
+security:
+  - bearerAuth: []
+parameters:
+  TenantHeader:
+    name: X-Tenant-Id
+    in: header
+    required: true
+    schema: { type: string, minLength: 1 }
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        '200': { description: Healthy or explicit development degraded state }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/auth/login:
+    post:
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } } }
+      responses:
+        '200': { description: Tenant-bound opaque session token, content: { application/json: { schema: { $ref: '#/components/schemas/LoginResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/auth/logout:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '204': { description: Session revoked }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/auth/me:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Current principal }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/imports/preview:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        '200': { description: No business projection is written, content: { application/json: { schema: { $ref: '#/components/schemas/ImportPreview' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/imports/confirm:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ImportConfirmRequest' } } } }
+      responses:
+        '200': { description: Explicit confirmation result, content: { application/json: { schema: { $ref: '#/components/schemas/ImportConfirmation' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/dashboard:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Tenant dashboard } }
+  /api/orders:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Tenant orders } }
+  /api/reconciliations/current:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Reconciliation with line explanations and source references } }
+  /api/raw-events:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [source,eventId,eventType,payload], properties: { source: { type: string }, eventId: { type: string }, eventType: { type: string }, payload: { type: string }, schemaVersion: { type: string, default: '1' } } } } } }
+      responses: { '200': { description: Idempotent raw acceptance } }
+  /api/raw-events/{id}:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Tenant-owned raw event }, '404': { description: Not found in tenant scope } }
+  /api/tax/periods/{period}/calculate:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: period, in: path, required: true, schema: { type: string } } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TaxCalculationRequest' } } } }
+      responses: { '200': { description: Deterministic result or NEEDS_REVIEW; never an LLM-selected rate } }
+  /api/tax/periods/{period}/transition:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: period, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Controlled state transition } }
+  /api/refunds:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Reversal/adjustment without deleting sale history }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/periods/{period}/freeze:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: period, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Period snapshot frozen }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/periods/{period}/lock:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: period, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Development lock result }, '204': { description: Persisted lock }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/inventory/{sku}/reserve:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: sku, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: Idempotent reservation }, '409': { description: Insufficient ATP } }
+  /api/team/invitations:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Tenant/role/expiry-bound invitation }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/support/grants:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Step-up protected bounded grant with audit }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/billing/trial:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Trial state }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/billing/transition:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Development state }, '204': { description: Persisted transition }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/copilot/explain:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Evidence-bound explanation or REFUSED } }
+  /api/onboarding:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Current ordered onboarding snapshot }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /api/onboarding/business-profile:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Profile step saved; format validation is not legal verification }, '400': { $ref: '#/components/responses/BadRequest' } }
+  /api/onboarding/data-source:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Source mode selected } }
+  /api/onboarding/backfill:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Backfill range selected } }
+  /api/onboarding/sku-mapping:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Mapping count confirmed } }
+  /api/onboarding/opening-balances:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Opening stock/cost validated } }
+  /api/onboarding/disclaimer:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Explicit versioned disclaimer confirmation } }
+  /api/onboarding/first-reconciliation:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Activation only with matched or explained result } }
+  /api/notifications:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Tenant notification inbox with masked recipients } }
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Development envelope with persisted=false }, '503': { description: Production persistence required } }
+  /api/notifications/{id}/acknowledge:
+    post:
+      parameters: [ { $ref: '#/parameters/TenantHeader' }, { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { '200': { description: In-app acknowledgement }, '400': { $ref: '#/components/responses/BadRequest' }, '404': { description: Not found in tenant scope } }
+  /api/exports/reconciliation.csv:
+    get:
+      parameters: [ { $ref: '#/parameters/TenantHeader' } ]
+      responses: { '200': { description: Traceable CSV with tenant/time/checksum/rule metadata, content: { text/csv: { schema: { type: string } } } } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: opaque }
+  responses:
+    BadRequest: { description: Safe validation/problem response }
+    Unauthorized: { description: Missing, invalid, expired or tenant-mismatched session }
+    Forbidden: { description: Authenticated role lacks permission }
+    ServiceUnavailable: { description: Required dependency unavailable }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email,password,tenantId]
+      properties: { email: { type: string, format: email }, password: { type: string, format: password, writeOnly: true }, tenantId: { type: string }, totpCode: { type: [string,'null'], pattern: '^[0-9]{6}$' } }
+    LoginResponse:
+      type: object
+      required: [token,principal]
+      properties: { token: { type: string, writeOnly: true }, principal: { type: object } }
+    ImportConfirmRequest:
+      type: object
+      required: [previewToken,checksum]
+      properties: { previewToken: { type: string, writeOnly: true }, checksum: { type: string, pattern: '^[a-f0-9]{64}$' } }
+    ImportRow:
+      type: object
+      required: [rowNumber,raw,errors]
+      properties: { rowNumber: { type: integer }, orderCode: { type: [string,'null'] }, amount: { type: [integer,'null'], description: VND minor unit }, occurredAt: { type: [string,'null'], format: date-time }, raw: { type: object, additionalProperties: { type: string } }, errors: { type: array, items: { type: string } } }
+    ImportPreview:
+      type: object
+      required: [previewToken,expiresAt,format,templateVersion,checksum,rows,errors,duplicate,persisted]
+      properties: { batchId: { type: [string,'null'] }, previewToken: { type: string, writeOnly: true }, expiresAt: { type: string, format: date-time }, format: { enum: [CSV,XLSX] }, templateVersion: { type: string }, checksum: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/ImportRow' } }, errors: { type: array, items: { type: string } }, duplicate: { type: boolean }, persisted: { type: boolean } }
+    ImportConfirmation:
+      type: object
+      required: [checksum,acceptedRows,rejectedRows,duplicate,persisted]
+      properties: { batchId: { type: [string,'null'] }, checksum: { type: string }, acceptedRows: { type: integer }, rejectedRows: { type: integer }, duplicate: { type: boolean }, persisted: { type: boolean } }
+    TaxCalculationRequest:
+      type: object
+      required: [effectiveDate,basisAmount,hasRequiredProfile]
+      properties: { effectiveDate: { type: string, format: date }, basisAmount: { type: integer }, platformWithheldAmount: { type: [integer,'null'] }, hasRequiredProfile: { type: boolean }, category: { type: [string,'null'] } }

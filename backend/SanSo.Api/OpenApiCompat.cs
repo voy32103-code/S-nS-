@@ -1,0 +1,2 @@
+namespace Microsoft.Extensions.DependencyInjection{public static class SanSoOpenApiServices{public static IServiceCollection AddOpenApi(this IServiceCollection services)=>services;}}
+namespace Microsoft.AspNetCore.Builder{public static class SanSoOpenApiEndpoints{public static WebApplication MapOpenApi(this WebApplication app){app.MapGet("/openapi/v1.json",()=>Results.Redirect("/docs/openapi.yaml"));return app;}}}

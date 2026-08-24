@@ -1,0 +1,3 @@
+$ErrorActionPreference='Stop'
+foreach($path in @('backend/SanSo.Api.V6/ProgramCanonicalV12.cs','backend/SanSo.Api.V6/ProgramCanonicalV13.cs')){$lines=Get-Content -LiteralPath $path -Encoding UTF8;$changed=0;for($i=0;$i-lt$lines.Count;$i++){if($lines[$i]-match '^app\.MapGet\("/api/(dashboard|orders|reconciliations/current)"'){$lines[$i]='Prefer('+$lines[$i].TrimEnd(';')+');';$changed++}};if($changed-ne3){throw "DEMO_READ_ROUTE_COUNT_INVALID:${path}:$changed"};[System.IO.File]::WriteAllLines((Join-Path(Get-Location)$path),$lines,[System.Text.UTF8Encoding]::new($false))}
+'DEVELOPMENT_DEMO_READ_ROUTES_PREFERRED=6'

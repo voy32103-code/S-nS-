@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/SanSo.Api/SanSo.Api.csproj" />
+    <Project Path="backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj" />
+    <Project Path="backend/SanSo.Api.V2/SanSo.Api.V2.csproj" />
+    <Project Path="backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj" />
+    <Project Path="backend/SanSo.Api.V4/SanSo.Api.V4.csproj" />
+    <Project Path="backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj" />
+    <Project Path="backend/SanSo.Import/SanSo.Import.csproj" />
+    <Project Path="backend/SanSo.Import.Tests/SanSo.Import.Tests.csproj" />
+    <Project Path="backend/SanSo.Migrator.V2/SanSo.Migrator.V2.csproj" />
+  </Folder>
+</Solution>

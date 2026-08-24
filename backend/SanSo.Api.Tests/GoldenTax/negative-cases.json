@@ -1,0 +1,10 @@
+{
+  "approvalStatus": "SAFE_NEGATIVE_CASES_NO_RATE_REQUIRED",
+  "asOfDate": "2026-08-24",
+  "cases": [
+    {"id":"GT-N01","effectiveDate":"2026-08-20","basis":1000000,"hasProfile":true,"category":null,"platformWithheld":null,"expectedStatus":"NEEDS_REVIEW","expectedReason":"missing-category"},
+    {"id":"GT-N02","effectiveDate":"2026-08-20","basis":1000000,"hasProfile":false,"category":"GOODS","platformWithheld":null,"expectedStatus":"NEEDS_REVIEW","expectedReason":"missing-profile"},
+    {"id":"GT-N03","effectiveDate":"2026-08-20","basis":1000000,"hasProfile":true,"category":"GOODS","platformWithheld":5000,"expectedStatus":"NEEDS_REVIEW","expectedReason":"no-approved-rule"},
+    {"id":"GT-N04","effectiveDate":"2026-07-01","basis":0,"hasProfile":true,"category":"SERVICE","platformWithheld":0,"expectedStatus":"NEEDS_REVIEW","expectedReason":"no-approved-rule-boundary"}
+  ]
+}

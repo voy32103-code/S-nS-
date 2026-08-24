@@ -1,0 +1,31 @@
+name: ci-v10-import-projection
+on: [push, pull_request]
+jobs:
+  postgres-import-projection:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: {POSTGRES_DB: sanso_projection, POSTGRES_USER: sanso_ci, POSTGRES_PASSWORD: ci-ephemeral-only}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sanso_ci -d sanso_projection"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      SANSO_POSTGRES: Host=127.0.0.1;Port=5432;Database=sanso_projection;Username=sanso_ci;Password=ci-ephemeral-only
+      PGPASSWORD: ci-ephemeral-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '9.0.x'}
+      - name: Build and verify migration chain 001-010
+        shell: pwsh
+        run: |
+          dotnet build backend/SanSo.Migrator.V3/SanSo.Migrator.V3.csproj --configuration Release
+          ./scripts/verify-migration-manifest-v5.ps1 -Configuration Release
+      - name: Apply migration chain twice
+        run: |
+          dotnet run --project backend/SanSo.Migrator.V3 --no-build --configuration Release
+          dotnet run --project backend/SanSo.Migrator.V3 --no-build --configuration Release
+      - name: Prove raw-to-order-ledger-tax-review projection and idempotency
+        run: psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U sanso_ci -d sanso_projection -f scripts/verify-import-projection-v5.sql

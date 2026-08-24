@@ -1,0 +1,37 @@
+name: ci-v2
+on: [push, pull_request]
+jobs:
+  build-test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_DB: sanso, POSTGRES_USER: sanso, POSTGRES_PASSWORD: ci-local-only}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sanso -d sanso"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      SANSO_POSTGRES: Host=127.0.0.1;Port=5432;Database=sanso;Username=sanso;Password=ci-local-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '9.0.x'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: dotnet build SanSo.sln
+      - run: dotnet test SanSo.sln --no-build
+      - run: dotnet run --project backend/SanSo.Migrator --no-build
+      - run: npm ci && npm test && npm run build && npm audit --audit-level=high
+        working-directory: frontend
+      - run: npm ci && npx playwright install --with-deps chromium
+        working-directory: e2e
+      - run: npm test && npm run test:browser && npm audit --audit-level=high
+        working-directory: e2e
+      - name: Verify seed and tenant RLS are present
+        run: |
+          test "$(psql "$SANSO_POSTGRES" -Atc "select count(*) from raw_events where source='DEMO'")" = "12"
+          test "$(psql "$SANSO_POSTGRES" -Atc "select count(*) from pg_policies where policyname like 'tenant_%')" -ge "6"

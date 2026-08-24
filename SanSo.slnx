@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="backend/SanSo.Api/SanSo.Api.csproj" />
+  <Project Path="backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj" />
+</Solution>

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "generated": "2026-08-24",
+  "containsRealPii": false,
+  "tenants": [
+    {"id":"tenant-an-nhien","name":"An Nhiên Commerce","members":[{"email":"owner.an-nhien@example.invalid","role":"OWNER"},{"email":"accountant.shared@example.invalid","role":"ACCOUNTANT"}]},
+    {"id":"tenant-binh-minh","name":"Bình Minh Home","members":[{"email":"owner.binh-minh@example.invalid","role":"OWNER"}]}
+  ],
+  "scenarios": [
+    {"id":"S01","name":"Settlement khớp hoàn toàn","expected":"MATCHED"},
+    {"id":"S02","name":"Thiếu một khoản phí làm payout lệch","expected":"NEEDS_REVIEW"},
+    {"id":"S03","name":"Voucher seller-funded mapping sai","expected":"MAPPING_EXCEPTION"},
+    {"id":"S04","name":"Partial refund sau settlement","expected":"ADJUSTMENT_POSTED"},
+    {"id":"S05","name":"Return xuyên kỳ","expected":"NEXT_PERIOD_ADJUSTMENT"},
+    {"id":"S06","name":"Thuế sàn báo khác expected","expected":"WITHHOLDING_DIFFERENCE"},
+    {"id":"S07","name":"Thiếu product category","expected":"NEEDS_REVIEW"},
+    {"id":"S08","name":"Hai kênh mua SKU cuối cùng","expected":"ONE_RESERVED_ONE_REJECTED"},
+    {"id":"S09","name":"Token bị revoke","expected":"DEGRADED_AND_WRITEBACK_STOPPED"},
+    {"id":"S10","name":"CSV import trùng file","expected":"ZERO_DUPLICATE_EFFECT"},
+    {"id":"S11","name":"Accountant chỉ xem tenant được mời","expected":"OTHER_TENANT_FORBIDDEN"},
+    {"id":"S12","name":"Rule mới khác effective date","expected":"CALCULATION_REPRODUCIBLE_BY_VERSION"}
+  ]
+}

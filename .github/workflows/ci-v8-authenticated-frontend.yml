@@ -1,0 +1,26 @@
+name: ci-v8-authenticated-frontend
+on: [push, pull_request]
+jobs:
+  authenticated-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: 'npm', cache-dependency-path: "**/package-lock.json"}
+      - name: Typecheck, component tests, build, and dependency audit
+        working-directory: frontend
+        run: |
+          npm ci
+          npm exec tsc -- --project tsconfig.v8.json
+          npm exec vitest -- run --config vitest.v8.config.ts
+          npm exec vite -- build --config vite.v8.config.js
+          npm audit --audit-level=high
+      - name: Scan browser bundle for secrets and PII patterns
+        shell: pwsh
+        run: ./scripts/scan-client-secrets-v2.ps1
+      - name: Install Playwright
+        working-directory: e2e
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Owner and Viewer authenticated UI acceptance
+        working-directory: e2e
+        run: npx playwright test --config playwright.auth-ui-v8.config.ts

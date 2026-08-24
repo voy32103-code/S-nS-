@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SanSo.Api'">
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
+</Project>

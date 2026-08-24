@@ -1,0 +1,1429 @@
+{
+    "openapi":  "3.1.0",
+    "info":  {
+                 "title":  "SanSo API V9",
+                 "version":  "0.9.0-pilot",
+                 "description":  "Canonical V9 pilot contract. Durable encrypted onboarding, guarded import, inventory and notification inbox. No endpoint submits tax filings or tax payments."
+             },
+    "servers":  [
+                    {
+                        "url":  "http://localhost:5080"
+                    }
+                ],
+    "security":  [
+                     {
+                         "bearerAuth":  [
+
+                                        ]
+                     }
+                 ],
+    "paths":  {
+                  "/health":  {
+                                  "get":  {
+                                              "security":  [
+
+                                                           ],
+                                              "responses":  {
+                                                                "200":  {
+                                                                            "description":  "Healthy or explicit development degraded state"
+                                                                        },
+                                                                "503":  {
+                                                                            "$ref":  "#/components/responses/ServiceUnavailable"
+                                                                        }
+                                                            }
+                                          }
+                              },
+                  "/api/auth/login":  {
+                                          "post":  {
+                                                       "security":  [
+
+                                                                    ],
+                                                       "requestBody":  {
+                                                                           "required":  true,
+                                                                           "content":  {
+                                                                                           "application/json":  {
+                                                                                                                    "schema":  {
+                                                                                                                                   "$ref":  "#/components/schemas/LoginRequest"
+                                                                                                                               }
+                                                                                                                }
+                                                                                       }
+                                                                       },
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Tenant-bound opaque session",
+                                                                                     "content":  {
+                                                                                                     "application/json":  {
+                                                                                                                              "schema":  {
+                                                                                                                                             "$ref":  "#/components/schemas/LoginResponse"
+                                                                                                                                         }
+                                                                                                                          }
+                                                                                                 }
+                                                                                 },
+                                                                         "401":  {
+                                                                                     "$ref":  "#/components/responses/Unauthorized"
+                                                                                 }
+                                                                     }
+                                                   }
+                                      },
+                  "/api/auth/logout":  {
+                                           "post":  {
+                                                        "parameters":  [
+                                                                           {
+                                                                               "$ref":  "#/components/parameters/TenantHeader"
+                                                                           }
+                                                                       ],
+                                                        "responses":  {
+                                                                          "204":  {
+                                                                                      "description":  "Session revoked"
+                                                                                  },
+                                                                          "401":  {
+                                                                                      "$ref":  "#/components/responses/Unauthorized"
+                                                                                  }
+                                                                      }
+                                                    }
+                                       },
+                  "/api/auth/me":  {
+                                       "get":  {
+                                                   "parameters":  [
+                                                                      {
+                                                                          "$ref":  "#/components/parameters/TenantHeader"
+                                                                      }
+                                                                  ],
+                                                   "responses":  {
+                                                                     "200":  {
+                                                                                 "description":  "Current tenant principal"
+                                                                             },
+                                                                     "401":  {
+                                                                                 "$ref":  "#/components/responses/Unauthorized"
+                                                                             }
+                                                                 }
+                                               }
+                                   },
+                  "/api/imports/preview":  {
+                                               "post":  {
+                                                            "parameters":  [
+                                                                               {
+                                                                                   "$ref":  "#/components/parameters/TenantHeader"
+                                                                               }
+                                                                           ],
+                                                            "requestBody":  {
+                                                                                "required":  true,
+                                                                                "content":  {
+                                                                                                "multipart/form-data":  {
+                                                                                                                            "schema":  {
+                                                                                                                                           "type":  "object",
+                                                                                                                                           "required":  [
+                                                                                                                                                            "file"
+                                                                                                                                                        ],
+                                                                                                                                           "properties":  {
+                                                                                                                                                              "file":  {
+                                                                                                                                                                           "type":  "string",
+                                                                                                                                                                           "format":  "binary",
+                                                                                                                                                                           "maxLength":  10485760,
+                                                                                                                                                                           "description":  "CSV or XLSX allowlisted by extension and MIME; maximum 10 MiB; CSV must be UTF-8."
+                                                                                                                                                                       }
+                                                                                                                                                          }
+                                                                                                                                       }
+                                                                                                                        }
+                                                                                            }
+                                                                            },
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Preview only; no business projection written",
+                                                                                          "content":  {
+                                                                                                          "application/json":  {
+                                                                                                                                   "schema":  {
+                                                                                                                                                  "$ref":  "#/components/schemas/ImportPreview"
+                                                                                                                                              }
+                                                                                                                               }
+                                                                                                      }
+                                                                                      },
+                                                                              "401":  {
+                                                                                          "$ref":  "#/components/responses/Unauthorized"
+                                                                                      },
+                                                                              "400":  {
+                                                                                          "description":  "Safe import validation error"
+                                                                                      }
+                                                                          }
+                                                        }
+                                           },
+                  "/api/imports/confirm":  {
+                                               "post":  {
+                                                            "parameters":  [
+                                                                               {
+                                                                                   "$ref":  "#/components/parameters/TenantHeader"
+                                                                               }
+                                                                           ],
+                                                            "requestBody":  {
+                                                                                "required":  true,
+                                                                                "content":  {
+                                                                                                "application/json":  {
+                                                                                                                         "schema":  {
+                                                                                                                                        "$ref":  "#/components/schemas/ImportConfirmRequest"
+                                                                                                                                    }
+                                                                                                                     }
+                                                                                            }
+                                                                            },
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Explicit confirmation result",
+                                                                                          "content":  {
+                                                                                                          "application/json":  {
+                                                                                                                                   "schema":  {
+                                                                                                                                                  "$ref":  "#/components/schemas/ImportConfirmation"
+                                                                                                                                              }
+                                                                                                                               }
+                                                                                                      }
+                                                                                      },
+                                                                              "400":  {
+                                                                                          "$ref":  "#/components/responses/BadRequest"
+                                                                                      },
+                                                                              "401":  {
+                                                                                          "$ref":  "#/components/responses/Unauthorized"
+                                                                                      }
+                                                                          }
+                                                        }
+                                           },
+                  "/api/dashboard":  {
+                                         "get":  {
+                                                     "parameters":  [
+                                                                        {
+                                                                            "$ref":  "#/components/parameters/TenantHeader"
+                                                                        }
+                                                                    ],
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Tenant dashboard"
+                                                                               }
+                                                                   }
+                                                 }
+                                     },
+                  "/api/orders":  {
+                                      "get":  {
+                                                  "parameters":  [
+                                                                     {
+                                                                         "$ref":  "#/components/parameters/TenantHeader"
+                                                                     }
+                                                                 ],
+                                                  "responses":  {
+                                                                    "200":  {
+                                                                                "description":  "Tenant orders"
+                                                                            }
+                                                                }
+                                              }
+                                  },
+                  "/api/reconciliations/current":  {
+                                                       "get":  {
+                                                                   "parameters":  [
+                                                                                      {
+                                                                                          "$ref":  "#/components/parameters/TenantHeader"
+                                                                                      }
+                                                                                  ],
+                                                                   "responses":  {
+                                                                                     "200":  {
+                                                                                                 "description":  "Line-level reconciliation and explanations"
+                                                                                             }
+                                                                                 }
+                                                               }
+                                                   },
+                  "/api/raw-events":  {
+                                          "post":  {
+                                                       "parameters":  [
+                                                                          {
+                                                                              "$ref":  "#/components/parameters/TenantHeader"
+                                                                          }
+                                                                      ],
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Idempotent raw event acceptance"
+                                                                                 }
+                                                                     }
+                                                   },
+                                          "get":  {
+                                                      "parameters":  [
+                                                                         {
+                                                                             "$ref":  "#/components/parameters/TenantHeader"
+                                                                         }
+                                                                     ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "Raw event scope"
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
+                  "/api/tax/periods/{period}/calculate":  {
+                                                              "post":  {
+                                                                           "parameters":  [
+                                                                                              {
+                                                                                                  "$ref":  "#/components/parameters/TenantHeader"
+                                                                                              },
+                                                                                              {
+                                                                                                  "$ref":  "#/components/parameters/PeriodPath"
+                                                                                              }
+                                                                                          ],
+                                                                           "responses":  {
+                                                                                             "200":  {
+                                                                                                         "description":  "Deterministic result or NEEDS_REVIEW; never LLM-selected tax rate"
+                                                                                                     }
+                                                                                         }
+                                                                       }
+                                                          },
+                  "/api/refunds":  {
+                                       "post":  {
+                                                    "parameters":  [
+                                                                       {
+                                                                           "$ref":  "#/components/parameters/TenantHeader"
+                                                                       }
+                                                                   ],
+                                                    "responses":  {
+                                                                      "200":  {
+                                                                                  "description":  "Reversal/adjustment preserving original history"
+                                                                              },
+                                                                      "403":  {
+                                                                                  "$ref":  "#/components/responses/Forbidden"
+                                                                              }
+                                                                  }
+                                                }
+                                   },
+                  "/api/periods/{period}/lock":  {
+                                                     "post":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "$ref":  "#/components/parameters/TenantHeader"
+                                                                                     },
+                                                                                     {
+                                                                                         "$ref":  "#/components/parameters/PeriodPath"
+                                                                                     }
+                                                                                 ],
+                                                                  "responses":  {
+                                                                                    "200":  {
+                                                                                                "description":  "Development lock result"
+                                                                                            },
+                                                                                    "204":  {
+                                                                                                "description":  "Persisted lock"
+                                                                                            },
+                                                                                    "403":  {
+                                                                                                "$ref":  "#/components/responses/Forbidden"
+                                                                                            }
+                                                                                }
+                                                              }
+                                                 },
+                  "/api/inventory/{sku}/reserve":  {
+                                                       "post":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "$ref":  "#/components/parameters/TenantHeader"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "sku",
+                                                                                           "in":  "path",
+                                                                                           "required":  true,
+                                                                                           "schema":  {
+                                                                                                          "type":  "string"
+                                                                                                      }
+                                                                                       }
+                                                                                   ],
+                                                                    "responses":  {
+                                                                                      "409":  {
+                                                                                                  "description":  "Insufficient ATP"
+                                                                                              },
+                                                                                      "200":  {
+                                                                                                  "content":  {
+                                                                                                                  "application/json":  {
+                                                                                                                                           "schema":  {
+                                                                                                                                                          "$ref":  "#/components/schemas/InventorySnapshot"
+                                                                                                                                                      }
+                                                                                                                                       }
+                                                                                                              },
+                                                                                                  "description":  "Durable inventory snapshot"
+                                                                                              },
+                                                                                      "401":  {
+                                                                                                  "$ref":  "#/components/responses/Unauthorized"
+                                                                                              },
+                                                                                      "403":  {
+                                                                                                  "$ref":  "#/components/responses/Forbidden"
+                                                                                              },
+                                                                                      "503":  {
+                                                                                                  "$ref":  "#/components/responses/ServiceUnavailable"
+                                                                                              }
+                                                                                  },
+                                                                    "requestBody":  {
+                                                                                        "content":  {
+                                                                                                        "application/json":  {
+                                                                                                                                 "schema":  {
+                                                                                                                                                "$ref":  "#/components/schemas/InventoryMutationRequest"
+                                                                                                                                            }
+                                                                                                                             }
+                                                                                                    },
+                                                                                        "required":  true
+                                                                                    }
+                                                                }
+                                                   },
+                  "/api/team/invitations":  {
+                                                "post":  {
+                                                             "parameters":  [
+                                                                                {
+                                                                                    "$ref":  "#/components/parameters/TenantHeader"
+                                                                                }
+                                                                            ],
+                                                             "responses":  {
+                                                                               "200":  {
+                                                                                           "description":  "Tenant/role/expiry-bound invitation"
+                                                                                       },
+                                                                               "403":  {
+                                                                                           "$ref":  "#/components/responses/Forbidden"
+                                                                                       }
+                                                                           }
+                                                         }
+                                            },
+                  "/api/support/grants":  {
+                                              "post":  {
+                                                           "parameters":  [
+                                                                              {
+                                                                                  "$ref":  "#/components/parameters/TenantHeader"
+                                                                              }
+                                                                          ],
+                                                           "responses":  {
+                                                                             "200":  {
+                                                                                         "description":  "Step-up protected bounded support grant"
+                                                                                     },
+                                                                             "403":  {
+                                                                                         "$ref":  "#/components/responses/Forbidden"
+                                                                                     }
+                                                                         }
+                                                       }
+                                          },
+                  "/api/billing/trial":  {
+                                             "post":  {
+                                                          "parameters":  [
+                                                                             {
+                                                                                 "$ref":  "#/components/parameters/TenantHeader"
+                                                                             }
+                                                                         ],
+                                                          "responses":  {
+                                                                            "200":  {
+                                                                                        "description":  "Trial state"
+                                                                                    },
+                                                                            "403":  {
+                                                                                        "$ref":  "#/components/responses/Forbidden"
+                                                                                    }
+                                                                        }
+                                                      }
+                                         },
+                  "/api/copilot/explain":  {
+                                               "post":  {
+                                                            "parameters":  [
+                                                                               {
+                                                                                   "$ref":  "#/components/parameters/TenantHeader"
+                                                                               }
+                                                                           ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Evidence-bound explanation or REFUSED"
+                                                                                      },
+                                                                              "403":  {
+                                                                                          "$ref":  "#/components/responses/Forbidden"
+                                                                                      }
+                                                                          }
+                                                        }
+                                           },
+                  "/api/onboarding":  {
+                                          "get":  {
+                                                      "parameters":  [
+                                                                         {
+                                                                             "$ref":  "#/components/parameters/TenantHeader"
+                                                                         }
+                                                                     ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "Ordered onboarding snapshot; persisted flag explicit"
+                                                                                },
+                                                                        "403":  {
+                                                                                    "$ref":  "#/components/responses/Forbidden"
+                                                                                },
+                                                                        "503":  {
+                                                                                    "description":  "FIELD_ENCRYPTION_NOT_CONFIGURED"
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
+                  "/api/notifications":  {
+                                             "get":  {
+                                                         "parameters":  [
+                                                                            {
+                                                                                "$ref":  "#/components/parameters/TenantHeader"
+                                                                            }
+                                                                        ],
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "Tenant inbox with masked recipient"
+                                                                                   }
+                                                                       }
+                                                     },
+                                             "post":  {
+                                                          "parameters":  [
+                                                                             {
+                                                                                 "$ref":  "#/components/parameters/TenantHeader"
+                                                                             }
+                                                                         ],
+                                                          "responses":  {
+                                                                            "200":  {
+                                                                                        "description":  "Development envelope with persisted=false"
+                                                                                    },
+                                                                            "503":  {
+                                                                                        "description":  "Email provider or production dependency is not configured"
+                                                                                    }
+                                                                        },
+                                                          "requestBody":  {
+                                                                              "content":  {
+                                                                                              "application/json":  {
+                                                                                                                       "schema":  {
+                                                                                                                                      "$ref":  "#/components/schemas/NotificationRequest"
+                                                                                                                                  }
+                                                                                                                   }
+                                                                                          },
+                                                                              "required":  true
+                                                                          }
+                                                      }
+                                         },
+                  "/api/notifications/{id}/acknowledge":  {
+                                                              "post":  {
+                                                                           "parameters":  [
+                                                                                              {
+                                                                                                  "$ref":  "#/components/parameters/TenantHeader"
+                                                                                              },
+                                                                                              {
+                                                                                                  "name":  "id",
+                                                                                                  "in":  "path",
+                                                                                                  "required":  true,
+                                                                                                  "schema":  {
+                                                                                                                 "type":  "string"
+                                                                                                             }
+                                                                                              }
+                                                                                          ],
+                                                                           "responses":  {
+                                                                                             "200":  {
+                                                                                                         "description":  "In-app acknowledgement"
+                                                                                                     },
+                                                                                             "404":  {
+                                                                                                         "description":  "Not found in tenant scope"
+                                                                                                     }
+                                                                                         }
+                                                                       }
+                                                          },
+                  "/api/exports/reconciliation.csv":  {
+                                                          "get":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "$ref":  "#/components/parameters/TenantHeader"
+                                                                                         }
+                                                                                     ],
+                                                                      "responses":  {
+                                                                                        "200":  {
+                                                                                                    "description":  "Traceable formula-safe CSV",
+                                                                                                    "content":  {
+                                                                                                                    "text/csv":  {
+                                                                                                                                     "schema":  {
+                                                                                                                                                    "type":  "string"
+                                                                                                                                                }
+                                                                                                                                 }
+                                                                                                                }
+                                                                                                }
+                                                                                    }
+                                                                  }
+                                                      },
+                  "/api/inventory/{sku}":  {
+                                               "get":  {
+                                                           "parameters":  [
+                                                                              {
+                                                                                  "$ref":  "#/components/parameters/TenantHeader"
+                                                                              },
+                                                                              {
+                                                                                  "name":  "sku",
+                                                                                  "in":  "path",
+                                                                                  "schema":  {
+                                                                                                 "type":  "string"
+                                                                                             },
+                                                                                  "required":  true
+                                                                              }
+                                                                          ],
+                                                           "responses":  {
+                                                                             "200":  {
+                                                                                         "content":  {
+                                                                                                         "application/json":  {
+                                                                                                                                  "schema":  {
+                                                                                                                                                 "$ref":  "#/components/schemas/InventorySnapshot"
+                                                                                                                                             }
+                                                                                                                              }
+                                                                                                     },
+                                                                                         "description":  "Durable inventory snapshot"
+                                                                                     },
+                                                                             "401":  {
+                                                                                         "$ref":  "#/components/responses/Unauthorized"
+                                                                                     },
+                                                                             "403":  {
+                                                                                         "$ref":  "#/components/responses/Forbidden"
+                                                                                     },
+                                                                             "503":  {
+                                                                                         "$ref":  "#/components/responses/ServiceUnavailable"
+                                                                                     }
+                                                                         }
+                                                       }
+                                           },
+                  "/api/inventory/{sku}/release":  {
+                                                       "post":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "$ref":  "#/components/parameters/TenantHeader"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "sku",
+                                                                                           "in":  "path",
+                                                                                           "schema":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                           "required":  true
+                                                                                       }
+                                                                                   ],
+                                                                    "requestBody":  {
+                                                                                        "content":  {
+                                                                                                        "application/json":  {
+                                                                                                                                 "schema":  {
+                                                                                                                                                "$ref":  "#/components/schemas/InventoryMutationRequest"
+                                                                                                                                            }
+                                                                                                                             }
+                                                                                                    },
+                                                                                        "required":  true
+                                                                                    },
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "content":  {
+                                                                                                                  "application/json":  {
+                                                                                                                                           "schema":  {
+                                                                                                                                                          "$ref":  "#/components/schemas/InventorySnapshot"
+                                                                                                                                                      }
+                                                                                                                                       }
+                                                                                                              },
+                                                                                                  "description":  "Durable inventory snapshot"
+                                                                                              },
+                                                                                      "400":  {
+                                                                                                  "$ref":  "#/components/responses/BadRequest"
+                                                                                              },
+                                                                                      "401":  {
+                                                                                                  "$ref":  "#/components/responses/Unauthorized"
+                                                                                              },
+                                                                                      "403":  {
+                                                                                                  "$ref":  "#/components/responses/Forbidden"
+                                                                                              },
+                                                                                      "503":  {
+                                                                                                  "$ref":  "#/components/responses/ServiceUnavailable"
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                   },
+                  "/api/onboarding/business-profile":  {
+                                                           "post":  {
+                                                                        "parameters":  [
+                                                                                           {
+                                                                                               "$ref":  "#/components/parameters/TenantHeader"
+                                                                                           }
+                                                                                       ],
+                                                                        "requestBody":  {
+                                                                                            "content":  {
+                                                                                                            "application/json":  {
+                                                                                                                                     "schema":  {
+                                                                                                                                                    "$ref":  "#/components/schemas/BusinessProfileDraft"
+                                                                                                                                                }
+                                                                                                                                 }
+                                                                                                        },
+                                                                                            "required":  true
+                                                                                        },
+                                                                        "responses":  {
+                                                                                          "200":  {
+                                                                                                      "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                                  },
+                                                                                          "400":  {
+                                                                                                      "$ref":  "#/components/responses/BadRequest"
+                                                                                                  },
+                                                                                          "401":  {
+                                                                                                      "$ref":  "#/components/responses/Unauthorized"
+                                                                                                  },
+                                                                                          "403":  {
+                                                                                                      "$ref":  "#/components/responses/Forbidden"
+                                                                                                  },
+                                                                                          "503":  {
+                                                                                                      "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                                  }
+                                                                                      }
+                                                                    }
+                                                       },
+                  "/api/onboarding/data-source":  {
+                                                      "post":  {
+                                                                   "parameters":  [
+                                                                                      {
+                                                                                          "$ref":  "#/components/parameters/TenantHeader"
+                                                                                      }
+                                                                                  ],
+                                                                   "requestBody":  {
+                                                                                       "content":  {
+                                                                                                       "application/json":  {
+                                                                                                                                "schema":  {
+                                                                                                                                               "$ref":  "#/components/schemas/SourceSelection"
+                                                                                                                                           }
+                                                                                                                            }
+                                                                                                   },
+                                                                                       "required":  true
+                                                                                   },
+                                                                   "responses":  {
+                                                                                     "200":  {
+                                                                                                 "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                             },
+                                                                                     "400":  {
+                                                                                                 "$ref":  "#/components/responses/BadRequest"
+                                                                                             },
+                                                                                     "401":  {
+                                                                                                 "$ref":  "#/components/responses/Unauthorized"
+                                                                                             },
+                                                                                     "403":  {
+                                                                                                 "$ref":  "#/components/responses/Forbidden"
+                                                                                             },
+                                                                                     "503":  {
+                                                                                                 "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                             }
+                                                                                 }
+                                                               }
+                                                  },
+                  "/api/onboarding/backfill":  {
+                                                   "post":  {
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "$ref":  "#/components/parameters/TenantHeader"
+                                                                                   }
+                                                                               ],
+                                                                "requestBody":  {
+                                                                                    "content":  {
+                                                                                                    "application/json":  {
+                                                                                                                             "schema":  {
+                                                                                                                                            "$ref":  "#/components/schemas/BackfillSelection"
+                                                                                                                                        }
+                                                                                                                         }
+                                                                                                },
+                                                                                    "required":  true
+                                                                                },
+                                                                "responses":  {
+                                                                                  "200":  {
+                                                                                              "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                          },
+                                                                                  "400":  {
+                                                                                              "$ref":  "#/components/responses/BadRequest"
+                                                                                          },
+                                                                                  "401":  {
+                                                                                              "$ref":  "#/components/responses/Unauthorized"
+                                                                                          },
+                                                                                  "403":  {
+                                                                                              "$ref":  "#/components/responses/Forbidden"
+                                                                                          },
+                                                                                  "503":  {
+                                                                                              "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                          }
+                                                                              }
+                                                            }
+                                               },
+                  "/api/onboarding/sku-mapping":  {
+                                                      "post":  {
+                                                                   "parameters":  [
+                                                                                      {
+                                                                                          "$ref":  "#/components/parameters/TenantHeader"
+                                                                                      }
+                                                                                  ],
+                                                                   "requestBody":  {
+                                                                                       "content":  {
+                                                                                                       "application/json":  {
+                                                                                                                                "schema":  {
+                                                                                                                                               "$ref":  "#/components/schemas/SkuMappingSelection"
+                                                                                                                                           }
+                                                                                                                            }
+                                                                                                   },
+                                                                                       "required":  true
+                                                                                   },
+                                                                   "responses":  {
+                                                                                     "200":  {
+                                                                                                 "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                             },
+                                                                                     "400":  {
+                                                                                                 "$ref":  "#/components/responses/BadRequest"
+                                                                                             },
+                                                                                     "401":  {
+                                                                                                 "$ref":  "#/components/responses/Unauthorized"
+                                                                                             },
+                                                                                     "403":  {
+                                                                                                 "$ref":  "#/components/responses/Forbidden"
+                                                                                             },
+                                                                                     "503":  {
+                                                                                                 "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                             }
+                                                                                 }
+                                                               }
+                                                  },
+                  "/api/onboarding/opening-balances":  {
+                                                           "post":  {
+                                                                        "parameters":  [
+                                                                                           {
+                                                                                               "$ref":  "#/components/parameters/TenantHeader"
+                                                                                           }
+                                                                                       ],
+                                                                        "requestBody":  {
+                                                                                            "content":  {
+                                                                                                            "application/json":  {
+                                                                                                                                     "schema":  {
+                                                                                                                                                    "$ref":  "#/components/schemas/OpeningBalancesSelection"
+                                                                                                                                                }
+                                                                                                                                 }
+                                                                                                        },
+                                                                                            "required":  true
+                                                                                        },
+                                                                        "responses":  {
+                                                                                          "200":  {
+                                                                                                      "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                                  },
+                                                                                          "400":  {
+                                                                                                      "$ref":  "#/components/responses/BadRequest"
+                                                                                                  },
+                                                                                          "401":  {
+                                                                                                      "$ref":  "#/components/responses/Unauthorized"
+                                                                                                  },
+                                                                                          "403":  {
+                                                                                                      "$ref":  "#/components/responses/Forbidden"
+                                                                                                  },
+                                                                                          "503":  {
+                                                                                                      "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                                  }
+                                                                                      }
+                                                                    }
+                                                       },
+                  "/api/onboarding/disclaimer":  {
+                                                     "post":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "$ref":  "#/components/parameters/TenantHeader"
+                                                                                     }
+                                                                                 ],
+                                                                  "requestBody":  {
+                                                                                      "content":  {
+                                                                                                      "application/json":  {
+                                                                                                                               "schema":  {
+                                                                                                                                              "$ref":  "#/components/schemas/DisclaimerSelection"
+                                                                                                                                          }
+                                                                                                                           }
+                                                                                                  },
+                                                                                      "required":  true
+                                                                                  },
+                                                                  "responses":  {
+                                                                                    "200":  {
+                                                                                                "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                            },
+                                                                                    "400":  {
+                                                                                                "$ref":  "#/components/responses/BadRequest"
+                                                                                            },
+                                                                                    "401":  {
+                                                                                                "$ref":  "#/components/responses/Unauthorized"
+                                                                                            },
+                                                                                    "403":  {
+                                                                                                "$ref":  "#/components/responses/Forbidden"
+                                                                                            },
+                                                                                    "503":  {
+                                                                                                "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                            }
+                                                                                }
+                                                              }
+                                                 },
+                  "/api/onboarding/first-reconciliation":  {
+                                                               "post":  {
+                                                                            "parameters":  [
+                                                                                               {
+                                                                                                   "$ref":  "#/components/parameters/TenantHeader"
+                                                                                               }
+                                                                                           ],
+                                                                            "requestBody":  {
+                                                                                                "content":  {
+                                                                                                                "application/json":  {
+                                                                                                                                         "schema":  {
+                                                                                                                                                        "$ref":  "#/components/schemas/ActivationSelection"
+                                                                                                                                                    }
+                                                                                                                                     }
+                                                                                                            },
+                                                                                                "required":  true
+                                                                                            },
+                                                                            "responses":  {
+                                                                                              "200":  {
+                                                                                                          "description":  "Onboarding snapshot with explicit persisted flag"
+                                                                                                      },
+                                                                                              "400":  {
+                                                                                                          "$ref":  "#/components/responses/BadRequest"
+                                                                                                      },
+                                                                                              "401":  {
+                                                                                                          "$ref":  "#/components/responses/Unauthorized"
+                                                                                                      },
+                                                                                              "403":  {
+                                                                                                          "$ref":  "#/components/responses/Forbidden"
+                                                                                                      },
+                                                                                              "503":  {
+                                                                                                          "description":  "PostgreSQL is configured but field encryption key is absent"
+                                                                                                      }
+                                                                                          }
+                                                                        }
+                                                           }
+              },
+    "components":  {
+                       "securitySchemes":  {
+                                               "bearerAuth":  {
+                                                                  "type":  "http",
+                                                                  "scheme":  "bearer",
+                                                                  "bearerFormat":  "opaque"
+                                                              }
+                                           },
+                       "parameters":  {
+                                          "TenantHeader":  {
+                                                               "name":  "X-Tenant-Id",
+                                                               "in":  "header",
+                                                               "required":  true,
+                                                               "schema":  {
+                                                                              "type":  "string",
+                                                                              "minLength":  1
+                                                                          }
+                                                           },
+                                          "PeriodPath":  {
+                                                             "name":  "period",
+                                                             "in":  "path",
+                                                             "required":  true,
+                                                             "schema":  {
+                                                                            "type":  "string"
+                                                                        }
+                                                         }
+                                      },
+                       "responses":  {
+                                         "BadRequest":  {
+                                                            "description":  "Safe validation response"
+                                                        },
+                                         "Unauthorized":  {
+                                                              "description":  "Missing, invalid, expired or tenant-mismatched session"
+                                                          },
+                                         "Forbidden":  {
+                                                           "description":  "Authenticated role lacks permission"
+                                                       },
+                                         "ServiceUnavailable":  {
+                                                                    "description":  "Required dependency unavailable"
+                                                                }
+                                     },
+                       "schemas":  {
+                                       "LoginRequest":  {
+                                                            "type":  "object",
+                                                            "required":  [
+                                                                             "email",
+                                                                             "password",
+                                                                             "tenantId"
+                                                                         ],
+                                                            "properties":  {
+                                                                               "email":  {
+                                                                                             "type":  "string",
+                                                                                             "format":  "email"
+                                                                                         },
+                                                                               "password":  {
+                                                                                                "type":  "string",
+                                                                                                "format":  "password",
+                                                                                                "writeOnly":  true
+                                                                                            },
+                                                                               "tenantId":  {
+                                                                                                "type":  "string"
+                                                                                            },
+                                                                               "totpCode":  {
+                                                                                                "type":  [
+                                                                                                             "string",
+                                                                                                             "null"
+                                                                                                         ],
+                                                                                                "pattern":  "^[0-9]{6}$"
+                                                                                            }
+                                                                           }
+                                                        },
+                                       "LoginResponse":  {
+                                                             "type":  "object",
+                                                             "required":  [
+                                                                              "token",
+                                                                              "principal"
+                                                                          ],
+                                                             "properties":  {
+                                                                                "token":  {
+                                                                                              "type":  "string",
+                                                                                              "writeOnly":  true
+                                                                                          },
+                                                                                "principal":  {
+                                                                                                  "type":  "object"
+                                                                                              }
+                                                                            }
+                                                         },
+                                       "ImportConfirmRequest":  {
+                                                                    "type":  "object",
+                                                                    "required":  [
+                                                                                     "previewToken",
+                                                                                     "checksum"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "previewToken":  {
+                                                                                                            "type":  "string",
+                                                                                                            "writeOnly":  true
+                                                                                                        },
+                                                                                       "checksum":  {
+                                                                                                        "type":  "string",
+                                                                                                        "pattern":  "^[a-f0-9]{64}$"
+                                                                                                    }
+                                                                                   }
+                                                                },
+                                       "ImportRow":  {
+                                                         "type":  "object",
+                                                         "required":  [
+                                                                          "rowNumber",
+                                                                          "raw",
+                                                                          "errors"
+                                                                      ],
+                                                         "properties":  {
+                                                                            "rowNumber":  {
+                                                                                              "type":  "integer"
+                                                                                          },
+                                                                            "orderCode":  {
+                                                                                              "type":  [
+                                                                                                           "string",
+                                                                                                           "null"
+                                                                                                       ]
+                                                                                          },
+                                                                            "amount":  {
+                                                                                           "type":  [
+                                                                                                        "integer",
+                                                                                                        "null"
+                                                                                                    ]
+                                                                                       },
+                                                                            "occurredAt":  {
+                                                                                               "type":  [
+                                                                                                            "string",
+                                                                                                            "null"
+                                                                                                        ],
+                                                                                               "format":  "date-time"
+                                                                                           },
+                                                                            "raw":  {
+                                                                                        "type":  "object",
+                                                                                        "additionalProperties":  {
+                                                                                                                     "type":  "string"
+                                                                                                                 }
+                                                                                    },
+                                                                            "errors":  {
+                                                                                           "type":  "array",
+                                                                                           "items":  {
+                                                                                                         "type":  "string"
+                                                                                                     }
+                                                                                       }
+                                                                        }
+                                                     },
+                                       "ImportPreview":  {
+                                                             "type":  "object",
+                                                             "required":  [
+                                                                              "previewToken",
+                                                                              "expiresAt",
+                                                                              "format",
+                                                                              "templateVersion",
+                                                                              "checksum",
+                                                                              "rows",
+                                                                              "errors",
+                                                                              "duplicate",
+                                                                              "persisted"
+                                                                          ],
+                                                             "properties":  {
+                                                                                "batchId":  {
+                                                                                                "type":  [
+                                                                                                             "string",
+                                                                                                             "null"
+                                                                                                         ]
+                                                                                            },
+                                                                                "previewToken":  {
+                                                                                                     "type":  "string",
+                                                                                                     "writeOnly":  true
+                                                                                                 },
+                                                                                "expiresAt":  {
+                                                                                                  "type":  "string",
+                                                                                                  "format":  "date-time"
+                                                                                              },
+                                                                                "format":  {
+                                                                                               "enum":  [
+                                                                                                            "CSV",
+                                                                                                            "XLSX"
+                                                                                                        ]
+                                                                                           },
+                                                                                "templateVersion":  {
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                "checksum":  {
+                                                                                                 "type":  "string"
+                                                                                             },
+                                                                                "rows":  {
+                                                                                             "type":  "array",
+                                                                                             "items":  {
+                                                                                                           "$ref":  "#/components/schemas/ImportRow"
+                                                                                                       }
+                                                                                         },
+                                                                                "errors":  {
+                                                                                               "type":  "array",
+                                                                                               "items":  {
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                           },
+                                                                                "duplicate":  {
+                                                                                                  "type":  "boolean"
+                                                                                              },
+                                                                                "persisted":  {
+                                                                                                  "type":  "boolean"
+                                                                                              }
+                                                                            }
+                                                         },
+                                       "ImportConfirmation":  {
+                                                                  "type":  "object",
+                                                                  "required":  [
+                                                                                   "checksum",
+                                                                                   "acceptedRows",
+                                                                                   "rejectedRows",
+                                                                                   "duplicate",
+                                                                                   "persisted"
+                                                                               ],
+                                                                  "properties":  {
+                                                                                     "batchId":  {
+                                                                                                     "type":  [
+                                                                                                                  "string",
+                                                                                                                  "null"
+                                                                                                              ]
+                                                                                                 },
+                                                                                     "checksum":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                     "acceptedRows":  {
+                                                                                                          "type":  "integer"
+                                                                                                      },
+                                                                                     "rejectedRows":  {
+                                                                                                          "type":  "integer"
+                                                                                                      },
+                                                                                     "duplicate":  {
+                                                                                                       "type":  "boolean"
+                                                                                                   },
+                                                                                     "persisted":  {
+                                                                                                       "type":  "boolean"
+                                                                                                   }
+                                                                                 }
+                                                              },
+                                       "InventorySnapshot":  {
+                                                                 "type":  "object",
+                                                                 "required":  [
+                                                                                  "sku",
+                                                                                  "onHand",
+                                                                                  "reserved",
+                                                                                  "quarantine",
+                                                                                  "available",
+                                                                                  "version"
+                                                                              ],
+                                                                 "properties":  {
+                                                                                    "sku":  {
+                                                                                                "type":  "string"
+                                                                                            },
+                                                                                    "onHand":  {
+                                                                                                   "type":  "integer"
+                                                                                               },
+                                                                                    "reserved":  {
+                                                                                                     "type":  "integer"
+                                                                                                 },
+                                                                                    "quarantine":  {
+                                                                                                       "type":  "integer"
+                                                                                                   },
+                                                                                    "available":  {
+                                                                                                      "type":  "integer"
+                                                                                                  },
+                                                                                    "version":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "format":  "int64"
+                                                                                                }
+                                                                                }
+                                                             },
+                                       "InventoryMutationRequest":  {
+                                                                        "type":  "object",
+                                                                        "required":  [
+                                                                                         "quantity",
+                                                                                         "sourceKey"
+                                                                                     ],
+                                                                        "properties":  {
+                                                                                           "quantity":  {
+                                                                                                            "type":  "integer",
+                                                                                                            "minimum":  1
+                                                                                                        },
+                                                                                           "sourceKey":  {
+                                                                                                             "minLength":  1,
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                       }
+                                                                    },
+                                       "NotificationRequest":  {
+                                                                   "type":  "object",
+                                                                   "required":  [
+                                                                                    "type",
+                                                                                    "channel",
+                                                                                    "recipient",
+                                                                                    "resourceRef",
+                                                                                    "windowStart"
+                                                                                ],
+                                                                   "properties":  {
+                                                                                      "type":  {
+                                                                                                   "type":  "string",
+                                                                                                   "enum":  [
+                                                                                                                "SyncFailure",
+                                                                                                                "LargeDiscrepancy",
+                                                                                                                "LowStock",
+                                                                                                                "PeriodNeedsReview"
+                                                                                                            ]
+                                                                                               },
+                                                                                      "channel":  {
+                                                                                                      "type":  "string",
+                                                                                                      "enum":  [
+                                                                                                                   "InApp",
+                                                                                                                   "Email"
+                                                                                                               ]
+                                                                                                  },
+                                                                                      "recipient":  {
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                      "resourceRef":  {
+                                                                                                          "maxLength":  100,
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                      "windowStart":  {
+                                                                                                          "type":  "string",
+                                                                                                          "format":  "date-time"
+                                                                                                      }
+                                                                                  }
+                                                               },
+                                       "NotificationDelivery":  {
+                                                                    "type":  "object",
+                                                                    "required":  [
+                                                                                     "id",
+                                                                                     "type",
+                                                                                     "channel",
+                                                                                     "recipientMasked",
+                                                                                     "resourceRef",
+                                                                                     "dedupeKey",
+                                                                                     "title",
+                                                                                     "body",
+                                                                                     "status",
+                                                                                     "attempt",
+                                                                                     "createdAt"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "id":  {
+                                                                                                  "type":  "string",
+                                                                                                  "format":  "uuid"
+                                                                                              },
+                                                                                       "type":  {
+                                                                                                    "type":  "string",
+                                                                                                    "enum":  [
+                                                                                                                 "SyncFailure",
+                                                                                                                 "LargeDiscrepancy",
+                                                                                                                 "LowStock",
+                                                                                                                 "PeriodNeedsReview"
+                                                                                                             ]
+                                                                                                },
+                                                                                       "channel":  {
+                                                                                                       "type":  "string",
+                                                                                                       "enum":  [
+                                                                                                                    "InApp",
+                                                                                                                    "Email"
+                                                                                                                ]
+                                                                                                   },
+                                                                                       "recipientMasked":  {
+                                                                                                               "type":  "string"
+                                                                                                           },
+                                                                                       "resourceRef":  {
+                                                                                                           "type":  "string"
+                                                                                                       },
+                                                                                       "dedupeKey":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                       "title":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                       "body":  {
+                                                                                                    "type":  "string"
+                                                                                                },
+                                                                                       "status":  {
+                                                                                                      "type":  "string",
+                                                                                                      "enum":  [
+                                                                                                                   "Pending",
+                                                                                                                   "Delivered",
+                                                                                                                   "RetryScheduled",
+                                                                                                                   "DeadLetter",
+                                                                                                                   "Acknowledged"
+                                                                                                               ]
+                                                                                                  },
+                                                                                       "attempt":  {
+                                                                                                       "type":  "integer"
+                                                                                                   },
+                                                                                       "createdAt":  {
+                                                                                                         "type":  "string",
+                                                                                                         "format":  "date-time"
+                                                                                                     }
+                                                                                   }
+                                                                },
+                                       "BusinessProfileDraft":  {
+                                                                    "type":  "object",
+                                                                    "required":  [
+                                                                                     "subjectType",
+                                                                                     "legalName",
+                                                                                     "taxIdentifier",
+                                                                                     "address"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "subjectType":  {
+                                                                                                           "type":  "string",
+                                                                                                           "enum":  [
+                                                                                                                        "Individual",
+                                                                                                                        "HouseholdBusiness",
+                                                                                                                        "MicroEnterprise",
+                                                                                                                        "Company",
+                                                                                                                        "OtherNeedsReview"
+                                                                                                                    ]
+                                                                                                       },
+                                                                                       "legalName":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                       "taxIdentifier":  {
+                                                                                                             "pattern":  "^(?:[0-9]{10}|[0-9]{13})$",
+                                                                                                             "writeOnly":  true,
+                                                                                                             "type":  "string"
+                                                                                                         },
+                                                                                       "address":  {
+                                                                                                       "type":  "string",
+                                                                                                       "writeOnly":  true
+                                                                                                   },
+                                                                                       "currency":  {
+                                                                                                        "const":  "VND",
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                       "timeZone":  {
+                                                                                                        "const":  "Asia/Ho_Chi_Minh",
+                                                                                                        "type":  "string"
+                                                                                                    }
+                                                                                   }
+                                                                },
+                                       "SourceSelection":  {
+                                                               "type":  "object",
+                                                               "required":  [
+                                                                                "mode"
+                                                                            ],
+                                                               "properties":  {
+                                                                                  "mode":  {
+                                                                                               "type":  "string",
+                                                                                               "enum":  [
+                                                                                                            "Demo",
+                                                                                                            "Csv",
+                                                                                                            "Shopee",
+                                                                                                            "TikTokShop"
+                                                                                                        ]
+                                                                                           }
+                                                                              }
+                                                           },
+                                       "BackfillSelection":  {
+                                                                 "type":  "object",
+                                                                 "required":  [
+                                                                                  "from"
+                                                                              ],
+                                                                 "properties":  {
+                                                                                    "from":  {
+                                                                                                 "type":  "string",
+                                                                                                 "format":  "date"
+                                                                                             }
+                                                                                }
+                                                             },
+                                       "SkuMappingSelection":  {
+                                                                   "type":  "object",
+                                                                   "required":  [
+                                                                                    "mappedSkuCount"
+                                                                                ],
+                                                                   "properties":  {
+                                                                                      "mappedSkuCount":  {
+                                                                                                             "type":  "integer",
+                                                                                                             "minimum":  0
+                                                                                                         }
+                                                                                  }
+                                                               },
+                                       "OpeningBalancesSelection":  {
+                                                                        "type":  "object",
+                                                                        "required":  [
+                                                                                         "balances"
+                                                                                     ],
+                                                                        "properties":  {
+                                                                                           "balances":  {
+                                                                                                            "items":  {
+                                                                                                                          "properties":  {
+                                                                                                                                             "canonicalSku":  {
+                                                                                                                                                                  "type":  "string"
+                                                                                                                                                              },
+                                                                                                                                             "onHand":  {
+                                                                                                                                                            "type":  "integer",
+                                                                                                                                                            "minimum":  0
+                                                                                                                                                        },
+                                                                                                                                             "unitCostMinor":  {
+                                                                                                                                                                   "type":  [
+                                                                                                                                                                                "integer",
+                                                                                                                                                                                "null"
+                                                                                                                                                                            ],
+                                                                                                                                                                   "minimum":  0
+                                                                                                                                                               }
+                                                                                                                                         },
+                                                                                                                          "type":  "object",
+                                                                                                                          "required":  [
+                                                                                                                                           "canonicalSku",
+                                                                                                                                           "onHand"
+                                                                                                                                       ]
+                                                                                                                      },
+                                                                                                            "type":  "array"
+                                                                                                        }
+                                                                                       }
+                                                                    },
+                                       "DisclaimerSelection":  {
+                                                                   "type":  "object",
+                                                                   "required":  [
+                                                                                    "version",
+                                                                                    "explicitlyConfirmed"
+                                                                                ],
+                                                                   "properties":  {
+                                                                                      "version":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                      "explicitlyConfirmed":  {
+                                                                                                                  "const":  true,
+                                                                                                                  "type":  "boolean"
+                                                                                                              }
+                                                                                  }
+                                                               },
+                                       "ActivationSelection":  {
+                                                                   "type":  "object",
+                                                                   "required":  [
+                                                                                    "reconciliationId",
+                                                                                    "hasMatchedOrExplainedDiscrepancy"
+                                                                                ],
+                                                                   "properties":  {
+                                                                                      "reconciliationId":  {
+                                                                                                               "type":  "string",
+                                                                                                               "format":  "uuid"
+                                                                                                           },
+                                                                                      "hasMatchedOrExplainedDiscrepancy":  {
+                                                                                                                               "const":  true,
+                                                                                                                               "type":  "boolean"
+                                                                                                                           }
+                                                                                  }
+                                                               }
+                                   }
+                   },
+    "x-sanso-canonical-entrypoint":  "backend/SanSo.Api.V6/ProgramCanonicalV9.cs"
+}

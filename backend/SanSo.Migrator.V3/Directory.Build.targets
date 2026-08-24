@@ -1,0 +1,1 @@
+<Project><ItemGroup><Compile Remove="LegacyProjectionCompilerCompatibility.cs"/></ItemGroup></Project>

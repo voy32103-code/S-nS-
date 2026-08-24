@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.json","include":["main-v8.tsx","src/AppV8.tsx","src/api-v8.ts","src/ImportV8.tsx","src/OnboardingV8.tsx","src/WorkflowV9.tsx","src/vite-env.d.ts"]}

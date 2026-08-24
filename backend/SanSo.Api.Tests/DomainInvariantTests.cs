@@ -1,0 +1,13 @@
+using SanSo.Api.Modules;
+namespace SanSo.Api.Tests;
+public class DomainInvariantTests
+{
+ [Fact]public void DuplicateRawEventHasOneImmutableCopy(){var ingest=new RawIngestion();var a=ingest.Accept("t1","csv","evt-1","ORDER","{\"a\":1}");var b=ingest.Accept("t1","csv","evt-1","ORDER","{\"a\":2}");Assert.False(a.Duplicate);Assert.True(b.Duplicate);Assert.Equal(a.Event.Checksum,b.Event.Checksum);Assert.Equal("{\"a\":1}",b.Event.Payload);}
+ [Fact]public void TaxMissingCategoryNeedsReviewAndDoesNotGuess(){var tax=new TaxCenter();var result=tax.Calculate("t1","2026-08",new(2026,8,20),1_000_000,null,true,null);Assert.Equal("NEEDS_REVIEW",result.Status);Assert.Null(result.CalculatedAmount);Assert.Null(result.RuleVersion);}
+ [Fact]public void ApprovedTaxRuleCannotOmitRateOrSource(){var tax=new TaxCenter();Assert.Throws<InvalidOperationException>(()=>tax.AddRule(new("UNVERIFIED",1,new(2026,1,1),null,"","APPROVED",null)));}
+ [Fact]public void LockedTaxPeriodCannotMutate(){var tax=new TaxCenter();tax.Transition("t1","2026-08",TaxPeriodStatus.Reviewed);tax.Transition("t1","2026-08",TaxPeriodStatus.ReadyToExport);tax.Transition("t1","2026-08",TaxPeriodStatus.Exported);tax.Transition("t1","2026-08",TaxPeriodStatus.Locked);Assert.Throws<InvalidOperationException>(()=>tax.AssertMutable("t1","2026-08"));}
+ [Fact]public async Task LastUnitCanOnlyBeReservedOnceConcurrently(){var inventory=new InventoryService();inventory.Seed("t1","SKU-LAST",1);var results=await Task.WhenAll(Task.Run(()=>inventory.Reserve("t1","SKU-LAST",1,"shop-a:o1")),Task.Run(()=>inventory.Reserve("t1","SKU-LAST",1,"shop-b:o2")));Assert.Equal(1,results.Count(x=>x));Assert.Equal(0,inventory.Get("t1","SKU-LAST").Available);}
+ [Fact]public void ReturnInQuarantineDoesNotIncreaseAtp(){var inventory=new InventoryService();inventory.Seed("t1","SKU-1",0);inventory.ReceiveReturnToQuarantine("t1","SKU-1",1,"return:1");var b=inventory.Get("t1","SKU-1");Assert.Equal(1,b.OnHand);Assert.Equal(1,b.Quarantine);Assert.Equal(0,b.Available);}
+ [Fact]public void CsvExportEscapesFormulaAndIncludesTraceMetadata(){var r=new Reconciliation("SET-1",100,0,0,100,100,0,"MATCHED",[new("=HYPERLINK(\"bad\")","SALE",100,"source")]);var export=TraceableExport.ReconciliationCsv("t1",r);Assert.StartsWith("# tenant=t1",export.Content);Assert.Contains("'=HYPERLINK",export.Content);Assert.NotEmpty(export.InputChecksum);}
+ [Fact]public void ExpiredSubscriptionKeepsReadAccessButStopsSync(){var service=new EntitlementService();var sub=new Subscription("t1",new Plan("STARTER",1,100,false,false),"EXPIRED",null);Assert.True(service.CanViewExistingData(sub));Assert.False(service.CanSync(sub,0));Assert.False(service.CanUse(sub,"inventory"));}
+}

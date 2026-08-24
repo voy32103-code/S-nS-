@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <Compile Remove="ProgramCanonicalV7.cs" />
+    <Compile Include="ProgramCanonicalV14.cs" Condition="Exists('ProgramCanonicalV14.cs')" />
+  </ItemGroup>
+</Project>

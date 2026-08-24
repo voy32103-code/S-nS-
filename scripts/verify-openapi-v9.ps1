@@ -1,0 +1,8 @@
+param([string]$Path="docs/openapi-v9-canonical.json",[string]$EntryPoint="backend/SanSo.Api.V6/ProgramCanonicalV9.cs")
+$ErrorActionPreference="Stop";$raw=Get-Content -LiteralPath $Path -Raw -Encoding UTF8;$source=Get-Content -LiteralPath $EntryPoint -Raw -Encoding UTF8;$d=$raw|ConvertFrom-Json
+if($d.openapi-ne"3.1.0"-or$d.info.version-ne"0.9.0-pilot"-or$d.'x-sanso-canonical-entrypoint'-ne$EntryPoint){throw"OPENAPI_V9_HEADER_INVALID"};if($raw.Contains("SĂ")){throw"MOJIBAKE_DETECTED"}
+$routes=@("/health","/api/auth/login","/api/imports/preview","/api/imports/confirm","/api/dashboard","/api/orders","/api/reconciliations/current","/api/inventory/{sku}","/api/inventory/{sku}/reserve","/api/inventory/{sku}/release","/api/notifications","/api/notifications/{id}/acknowledge","/api/onboarding","/api/onboarding/business-profile","/api/onboarding/data-source","/api/onboarding/backfill","/api/onboarding/sku-mapping","/api/onboarding/opening-balances","/api/onboarding/disclaimer","/api/onboarding/first-reconciliation")
+foreach($route in $routes){if($null-eq$d.paths.$route){throw"ROUTE_MISSING:$route"};if($route-ne"/api/auth/login"-and-not$source.Contains($route)){throw"ROUTE_NOT_IN_SOURCE:$route"}}
+$refs=[regex]::Matches($raw,'"\$ref"\s*:\s*"#/components/([^/]+)/([^"/]+)"');foreach($m in $refs){if($null-eq$d.components.($m.Groups[1].Value).($m.Groups[2].Value)){throw"BROKEN_REF:$($m.Value)"}}
+if($d.paths.'/api/onboarding'.get.responses.'503'.description-ne"FIELD_ENCRYPTION_NOT_CONFIGURED"){throw"ONBOARDING_FAIL_CLOSED_CONTRACT_MISSING"}
+"OPENAPI_V9_VERIFIED paths=$(@($d.paths.PSObject.Properties).Count) refs=$($refs.Count) routes=$($routes.Count) utf8=true"

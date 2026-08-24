@@ -1,0 +1,36 @@
+BEGIN;
+INSERT INTO organizations(id,slug,name) VALUES
+ ('11111111-1111-1111-1111-111111111111','an-nhien-demo','An Nhiên Commerce'),
+ ('22222222-2222-2222-2222-222222222222','binh-minh-demo','Bình Minh Home') ON CONFLICT DO NOTHING;
+INSERT INTO plans(id,code,name,monthly_price,annual_price,entitlements) VALUES
+ ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','DEMO','Demo',0,0,'{"shops":2,"orders":10000,"inventory":true,"advanced_export":true}') ON CONFLICT DO NOTHING;
+INSERT INTO subscriptions(id,organization_id,plan_id,status,trial_ends_at) VALUES
+ ('a1111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','TRIAL',now()+interval '14 days'),
+ ('a2222222-2222-2222-2222-222222222222','22222222-2222-2222-2222-222222222222','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','TRIAL',now()+interval '14 days') ON CONFLICT DO NOTHING;
+INSERT INTO connections(id,organization_id,channel,external_shop_id,status,capabilities) VALUES
+ ('c1111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','SHOPEE','demo-shopee','HEALTHY','{"orders":true,"settlements":true,"inventoryRead":true,"inventoryWrite":false}'),
+ ('c1111111-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','TIKTOK_SHOP','demo-tiktok','DEGRADED_AUTH','{"orders":true,"settlements":true,"inventoryRead":true,"inventoryWrite":false}') ON CONFLICT DO NOTHING;
+
+-- Twelve synthetic scenarios are durable raw evidence. No real PII and no invented tax rate.
+INSERT INTO raw_events(id,organization_id,source,source_event_id,event_type,schema_version,payload,checksum,occurred_at) VALUES
+ ('e0000001-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111','DEMO','S01','SETTLEMENT_MATCHED','1','{"scenario":"Settlement khớp hoàn toàn","expected":"MATCHED"}','demo-s01','2026-08-20T02:00:00Z'),
+ ('e0000002-0000-0000-0000-000000000002','11111111-1111-1111-1111-111111111111','DEMO','S02','FEE_MISSING','1','{"scenario":"Thiếu phí làm payout lệch","difference":-30000}','demo-s02','2026-08-20T02:01:00Z'),
+ ('e0000003-0000-0000-0000-000000000003','11111111-1111-1111-1111-111111111111','DEMO','S03','VOUCHER_MAPPING_ERROR','1','{"funding":"SELLER","status":"MAPPING_EXCEPTION"}','demo-s03','2026-08-20T02:02:00Z'),
+ ('e0000004-0000-0000-0000-000000000004','11111111-1111-1111-1111-111111111111','DEMO','S04','PARTIAL_REFUND','1','{"afterSettlement":true,"expected":"ADJUSTMENT_POSTED"}','demo-s04','2026-08-21T02:00:00Z'),
+ ('e0000005-0000-0000-0000-000000000005','11111111-1111-1111-1111-111111111111','DEMO','S05','CROSS_PERIOD_RETURN','1','{"expected":"NEXT_PERIOD_ADJUSTMENT"}','demo-s05','2026-09-02T02:00:00Z'),
+ ('e0000006-0000-0000-0000-000000000006','11111111-1111-1111-1111-111111111111','DEMO','S06','WITHHOLDING_DIFFERENCE','1','{"status":"NEEDS_REVIEW","rate":null}','demo-s06','2026-08-22T02:00:00Z'),
+ ('e0000007-0000-0000-0000-000000000007','11111111-1111-1111-1111-111111111111','DEMO','S07','CATEGORY_MISSING','1','{"category":null,"status":"NEEDS_REVIEW"}','demo-s07','2026-08-22T02:01:00Z'),
+ ('e0000008-0000-0000-0000-000000000008','11111111-1111-1111-1111-111111111111','DEMO','S08','CONCURRENT_LAST_UNIT','1','{"sku":"SKU-LAST","expected":"ONE_RESERVED_ONE_REJECTED"}','demo-s08','2026-08-22T02:02:00Z'),
+ ('e0000009-0000-0000-0000-000000000009','11111111-1111-1111-1111-111111111111','DEMO','S09','TOKEN_REVOKED','1','{"status":"DEGRADED_AUTH","writeBack":false}','demo-s09','2026-08-22T02:03:00Z'),
+ ('e0000010-0000-0000-0000-000000000010','11111111-1111-1111-1111-111111111111','DEMO','S10','DUPLICATE_FILE','1','{"checksum":"same","secondEffect":0}','demo-s10','2026-08-22T02:04:00Z'),
+ ('e0000011-0000-0000-0000-000000000011','22222222-2222-2222-2222-222222222222','DEMO','S11','TENANT_ISOLATION','1','{"accountantInvited":false,"otherTenant":"FORBIDDEN"}','demo-s11','2026-08-22T02:05:00Z'),
+ ('e0000012-0000-0000-0000-000000000012','11111111-1111-1111-1111-111111111111','DEMO','S12','RULE_EFFECTIVE_DATE','1','{"oldVersion":1,"newVersion":2,"rate":null}','demo-s12','2026-08-22T02:06:00Z') ON CONFLICT DO NOTHING;
+
+INSERT INTO products(id,organization_id,name,canonical_sku) VALUES
+ ('d1111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','Sản phẩm cuối cùng','SKU-LAST'),
+ ('d1111111-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','Hàng hoàn chờ kiểm','SKU-RETURN') ON CONFLICT DO NOTHING;
+INSERT INTO inventory_locations(id,organization_id,code,name) VALUES('f1111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','MAIN','Kho chính') ON CONFLICT DO NOTHING;
+INSERT INTO inventory_balances(organization_id,product_id,location_id,on_hand,reserved,quarantine) VALUES
+ ('11111111-1111-1111-1111-111111111111','d1111111-1111-1111-1111-111111111111','f1111111-1111-1111-1111-111111111111',1,0,0),
+ ('11111111-1111-1111-1111-111111111111','d1111111-2222-2222-2222-222222222222','f1111111-1111-1111-1111-111111111111',1,0,1) ON CONFLICT DO NOTHING;
+COMMIT;

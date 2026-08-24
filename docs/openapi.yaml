@@ -1,0 +1,156 @@
+openapi: 3.1.0
+info:
+  title: SànSổ API
+  version: 0.2.0
+  description: >-
+    MVP contract. Production endpoints require bearer session and derive organization
+    from authenticated membership. X-Tenant-Id is allowed only in explicit demo mode.
+servers:
+  - url: http://localhost:5080
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      operationId: health
+      responses:
+        '200': {description: Healthy}
+  /api/dashboard:
+    get:
+      operationId: getDashboard
+      responses:
+        '200': {description: Aggregated dashboard, content: {application/json: {schema: {$ref: '#/components/schemas/Dashboard'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/orders:
+    get:
+      operationId: listOrders
+      parameters:
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+      responses:
+        '200': {description: Tenant orders}
+  /api/imports/demo:
+    post:
+      operationId: importDemo
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      responses:
+        '200': {description: Existing idempotent result}
+        '202': {description: Accepted import job}
+  /api/raw-events:
+    post:
+      operationId: acceptRawEvent
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RawEventRequest'}
+      responses:
+        '200': {description: Accepted or duplicate raw envelope}
+  /api/raw-events/{id}:
+    get:
+      operationId: getRawEvent
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Tenant-owned source evidence}
+        '404': {description: Not found in tenant scope}
+  /api/reconciliations/current:
+    get:
+      operationId: getCurrentReconciliation
+      responses:
+        '200': {description: Settlement bridge and source lines, content: {application/json: {schema: {$ref: '#/components/schemas/Reconciliation'}}}}
+  /api/tax/periods/{period}/calculate:
+    post:
+      operationId: calculateTaxPeriod
+      parameters:
+        - {name: period, in: path, required: true, schema: {type: string, pattern: '^\\d{4}-(0[1-9]|1[0-2])$'}}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TaxCalculationRequest'}}}
+      responses:
+        '200': {description: Deterministic result or NEEDS_REVIEW}
+        '409': {description: Period locked or ambiguous rule}
+  /api/tax/periods/{period}/transition:
+    post:
+      operationId: transitionTaxPeriod
+      parameters:
+        - {name: period, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: New state}
+        '409': {description: Invalid state transition}
+  /api/inventory/{sku}/reserve:
+    post:
+      operationId: reserveInventory
+      parameters:
+        - {name: sku, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      responses:
+        '200': {description: Updated balance}
+        '409': {description: Insufficient ATP or concurrency conflict}
+  /api/inventory/{sku}/release:
+    post:
+      operationId: releaseInventory
+      parameters:
+        - {name: sku, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated balance}
+  /api/exports/reconciliation.csv:
+    get:
+      operationId: exportReconciliationCsv
+      responses:
+        '200': {description: Traceable formula-safe CSV, content: {text/csv: {schema: {type: string}}}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer}
+  parameters:
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 16, maxLength: 128}}
+  responses:
+    Unauthorized: {description: Missing, invalid or expired session}
+    Forbidden: {description: Authenticated but permission denied}
+  schemas:
+    Dashboard:
+      type: object
+      required: [gross, expectedPayout, actualPayout, difference, dataFreshness, taxStatus]
+      properties:
+        gross: {type: integer, format: int64}
+        expectedPayout: {type: integer, format: int64}
+        actualPayout: {type: integer, format: int64}
+        difference: {type: integer, format: int64}
+        dataFreshness: {type: string}
+        taxStatus: {type: string}
+    RawEventRequest:
+      type: object
+      required: [source, eventId, eventType, payload, schemaVersion]
+      properties:
+        source: {type: string}
+        eventId: {type: string}
+        eventType: {type: string}
+        payload: {type: string, maxLength: 1048576}
+        schemaVersion: {type: string}
+    TaxCalculationRequest:
+      type: object
+      required: [effectiveDate, basisAmount, hasRequiredProfile]
+      properties:
+        effectiveDate: {type: string, format: date}
+        basisAmount: {type: integer, format: int64}
+        platformWithheldAmount: {type: [integer, 'null'], format: int64}
+        hasRequiredProfile: {type: boolean}
+        category: {type: [string, 'null']}
+    Reconciliation:
+      type: object
+      required: [settlementCode, gross, fees, expected, actual, difference, status, lines]
+      properties:
+        settlementCode: {type: string}
+        gross: {type: integer, format: int64}
+        fees: {type: integer, format: int64}
+        expected: {type: integer, format: int64}
+        actual: {type: integer, format: int64}
+        difference: {type: integer, format: int64}
+        status: {type: string, enum: [MATCHED, NEEDS_REVIEW]}
+        lines: {type: array, items: {type: object}}

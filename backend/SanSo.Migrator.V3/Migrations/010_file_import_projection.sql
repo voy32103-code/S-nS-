@@ -1,0 +1,52 @@
+CREATE OR REPLACE FUNCTION project_file_import_order_v1() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  order_code text;
+  amount_text text;
+  occurred_text text;
+  gross bigint;
+  occurred timestamptz;
+  projected_order_id uuid;
+  projected_ledger_id uuid;
+  projected_period_id uuid;
+  period_key text;
+BEGIN
+  IF NEW.source<>'file-import' OR NEW.event_type<>'ORDER_IMPORTED' THEN RETURN NEW; END IF;
+
+  order_code:=nullif(btrim(coalesce(NEW.payload->>'OrderCode',NEW.payload->>'orderCode')),'');
+  amount_text:=nullif(btrim(coalesce(NEW.payload->>'Amount',NEW.payload->>'amount')),'');
+  occurred_text:=nullif(btrim(coalesce(NEW.payload->>'OccurredAt',NEW.payload->>'occurredAt')),'');
+  IF order_code IS NULL THEN RAISE EXCEPTION 'IMPORT_PROJECTION_ORDER_CODE_REQUIRED'; END IF;
+  IF amount_text IS NULL OR amount_text!~'^-?[0-9]+$' THEN RAISE EXCEPTION 'IMPORT_PROJECTION_AMOUNT_INVALID'; END IF;
+  IF occurred_text IS NULL THEN RAISE EXCEPTION 'IMPORT_PROJECTION_OCCURRED_AT_REQUIRED'; END IF;
+  BEGIN gross:=amount_text::bigint; EXCEPTION WHEN numeric_value_out_of_range THEN RAISE EXCEPTION 'IMPORT_PROJECTION_AMOUNT_OUT_OF_RANGE'; END;
+  BEGIN occurred:=occurred_text::timestamptz; EXCEPTION WHEN invalid_datetime_format OR datetime_field_overflow THEN RAISE EXCEPTION 'IMPORT_PROJECTION_OCCURRED_AT_INVALID'; END;
+
+  INSERT INTO orders(organization_id,raw_event_id,channel,source_key,code,status,gross_amount,currency,occurred_at)
+  VALUES(NEW.organization_id,NEW.id,'FILE_IMPORT',NEW.source_event_id,order_code,'IMPORTED',gross,'VND',occurred)
+  ON CONFLICT(organization_id,source_key) DO NOTHING RETURNING id INTO projected_order_id;
+  IF projected_order_id IS NULL THEN SELECT id INTO projected_order_id FROM orders WHERE organization_id=NEW.organization_id AND source_key=NEW.source_event_id; END IF;
+
+  INSERT INTO ledger_lines(organization_id,order_id,raw_event_id,type,amount,currency,source_key,explanation,occurred_at)
+  VALUES(NEW.organization_id,projected_order_id,NEW.id,'SALE',gross,'VND','file-sale:'||NEW.source_event_id,'Projected deterministically from immutable file-import raw event',occurred)
+  ON CONFLICT(organization_id,source_key) DO NOTHING RETURNING id INTO projected_ledger_id;
+  IF projected_ledger_id IS NULL THEN SELECT id INTO projected_ledger_id FROM ledger_lines WHERE organization_id=NEW.organization_id AND source_key='file-sale:'||NEW.source_event_id; END IF;
+
+  period_key:=to_char(occurred AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM');
+  INSERT INTO tax_periods(organization_id,period_key,status,input_checksum)
+  VALUES(NEW.organization_id,period_key,'NEEDS_REVIEW',NEW.checksum)
+  ON CONFLICT(organization_id,period_key) DO UPDATE SET status=CASE WHEN tax_periods.status='DRAFT' THEN 'NEEDS_REVIEW' ELSE tax_periods.status END
+  RETURNING id INTO projected_period_id;
+
+  INSERT INTO tax_calculations(organization_id,period_id,ledger_line_id,rule_version_id,status,basis_amount,calculated_amount,source_ref,effective_date,explanation,input_snapshot)
+  VALUES(NEW.organization_id,projected_period_id,projected_ledger_id,NULL,'NEEDS_REVIEW',gross,NULL,NEW.source_event_id,(occurred AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+    'No approved tax rule/category supplied; monetary tax result intentionally withheld',
+    jsonb_build_object('raw_event_id',NEW.id,'checksum',NEW.checksum,'category',NULL,'rule_version_id',NULL));
+  INSERT INTO tax_exceptions(organization_id,period_id,calculation_id,code,severity,status,details)
+  SELECT NEW.organization_id,projected_period_id,id,'RULE_OR_CATEGORY_REQUIRED','HIGH','OPEN',jsonb_build_object('source_event_id',NEW.source_event_id)
+  FROM tax_calculations WHERE organization_id=NEW.organization_id AND ledger_line_id=projected_ledger_id ORDER BY calculated_at DESC LIMIT 1;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_project_file_import_order_v1 ON raw_events;
+CREATE TRIGGER trg_project_file_import_order_v1 AFTER INSERT ON raw_events FOR EACH ROW EXECUTE FUNCTION project_file_import_order_v1();

@@ -1,0 +1,7 @@
+extern alias apiv4;
+using System.Text;using Npgsql;using SanSo.Import;using Xunit;using Store=apiv4::SanSo.Api.V4.PostgresImportStagingStore;
+namespace SanSo.Api.V4.Tests;
+public sealed class PostgresImportStoreDiagnosticTests
+{
+ [Fact]public async Task StageAndConfirmExposeFullPersistenceFailure(){var cs=Environment.GetEnvironmentVariable("SANSO_RUNTIME_POSTGRES");if(string.IsNullOrWhiteSpace(cs))return;const string tenant="11111111-1111-1111-1111-111111111111";var actor=Guid.NewGuid().ToString();await using(var c=new NpgsqlConnection(cs)){await c.OpenAsync();await using var q=c.CreateCommand();q.CommandText="INSERT INTO users(id,email,display_name,password_hash,mfa_enabled) VALUES($1::uuid,$2,'Store diagnostic','test',true)";q.Parameters.AddWithValue(actor);q.Parameters.AddWithValue($"store-{actor}@example.invalid");await q.ExecuteNonQueryAsync();}var importer=new CommerceFileImporter(new ImportRegistry());await using var stream=new MemoryStream(Encoding.UTF8.GetBytes($"order_code,amount,occurred_at\nSTORE-{Guid.NewGuid():N},45000,2026-08-24T10:00:00+07:00"));var preview=importer.PreviewCsv(tenant,stream);await using var source=NpgsqlDataSource.Create(cs);var store=new Store(source);var staged=await store.Stage(tenant,preview,CancellationToken.None);try{var result=await store.Confirm(tenant,staged.PreviewToken,preview.Checksum,actor,CancellationToken.None);Assert.Equal(1,result.AcceptedRows);}catch(Exception error){throw new Xunit.Sdk.XunitException(error.ToString());}}
+}

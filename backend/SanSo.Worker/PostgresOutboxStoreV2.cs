@@ -1,0 +1,14 @@
+using Npgsql;
+namespace SanSo.Worker;
+public sealed class PostgresOutboxStoreV2(NpgsqlDataSource dataSource,string tenant):IOutboxStore
+{
+ public async Task<int> RecoverExpiredLeases(CancellationToken ct){await using var c=await Open(ct);await using var q=c.CreateCommand();q.CommandText="UPDATE outbox_messages SET status='RETRY_SCHEDULED',next_attempt_at=now() WHERE organization_id=$1::uuid AND status='PROCESSING' AND next_attempt_at<=now()";q.Parameters.AddWithValue(tenant);return await q.ExecuteNonQueryAsync(ct);}
+ public async Task<OutboxEnvelope?> Claim(TimeSpan lease,CancellationToken ct){await using var c=await Open(ct);await using var tx=await c.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted,ct);await using var q=c.CreateCommand();q.Transaction=tx;q.CommandText="""
+WITH candidate AS (SELECT id FROM outbox_messages WHERE organization_id=$1::uuid AND status IN('PENDING','RETRY_SCHEDULED') AND next_attempt_at<=now() ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
+UPDATE outbox_messages o SET status='PROCESSING',attempt=o.attempt+1,next_attempt_at=now()+$2::interval FROM candidate WHERE o.id=candidate.id
+RETURNING o.id,o.organization_id::text,o.type,o.payload::text,o.correlation_id,o.attempt,o.created_at
+""";q.Parameters.AddWithValue(tenant);q.Parameters.AddWithValue(lease);OutboxEnvelope? item=null;await using(var reader=await q.ExecuteReaderAsync(ct)){if(await reader.ReadAsync(ct))item=new(reader.GetGuid(0),reader.GetString(1),reader.GetString(2),reader.GetString(3),reader.GetString(4),reader.GetInt32(5),reader.GetFieldValue<DateTimeOffset>(6));}await tx.CommitAsync(ct);return item;}
+ public Task Complete(Guid id,CancellationToken ct)=>Update(id,"COMPLETED",null,TimeSpan.Zero,ct);public Task Fail(Guid id,WorkerFailure failure,TimeSpan delay,bool deadLetter,CancellationToken ct)=>Update(id,deadLetter?"DEAD_LETTER":"RETRY_SCHEDULED",failure.Code,delay,ct);
+ private async Task Update(Guid id,string status,string? error,TimeSpan delay,CancellationToken ct){await using var c=await Open(ct);await using var q=c.CreateCommand();q.CommandText="UPDATE outbox_messages SET status=$1,error_code=$2,next_attempt_at=now()+$3::interval WHERE organization_id=$4::uuid AND id=$5 AND status='PROCESSING'";q.Parameters.AddWithValue(status);q.Parameters.AddWithValue((object?)error??DBNull.Value);q.Parameters.AddWithValue(delay);q.Parameters.AddWithValue(tenant);q.Parameters.AddWithValue(id);if(await q.ExecuteNonQueryAsync(ct)!=1)throw new InvalidOperationException("OUTBOX_LEASE_LOST");}
+ private async Task<NpgsqlConnection> Open(CancellationToken ct){var c=await dataSource.OpenConnectionAsync(ct);await using var q=c.CreateCommand();q.CommandText="SELECT set_config('app.current_organization_id',$1,false)";q.Parameters.AddWithValue(tenant);await q.ExecuteNonQueryAsync(ct);return c;}
+}

@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="PostgresOnboardingStoreV1.cs" />
+    <Compile Include="PostgresNotificationStoreV1.cs" />
+    <Compile Include="PostgresSettlementImportStoreV1.cs" />
+    <Compile Include="PostgresReportExportStoreV1.cs" />
+    <Compile Include="PostgresReportExportStoreV2.cs" />
+    <Compile Include="SettlementImportWorkflowV1.cs" />
+    <Compile Include="DevelopmentE2ESeedV2.cs" />
+    <Compile Include="SafeProblemMiddlewareV2.cs" />
+  </ItemGroup>
+</Project>

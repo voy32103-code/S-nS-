@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup><PackageReference Include="Npgsql" Version="9.0.3" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../SanSo.Migrator.V2/Program.cs" Link="Program.cs" />
+    <None Include="../SanSo.Api/Persistence/Migrations/001_initial.sql" Link="Migrations/001_initial.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Api/Persistence/Migrations/002_tenant_guards.sql" Link="Migrations/002_tenant_guards.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Api/Persistence/Migrations/003_demo_seed.sql" Link="Migrations/003_demo_seed.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Api/Persistence/Migrations/004_workflow_security.sql" Link="Migrations/004_workflow_security.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Migrator.V2/Migrations/005_import_staging.sql" Link="Migrations/005_import_staging.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Migrator.V2/Migrations/006_onboarding_profiles.sql" Link="Migrations/006_onboarding_profiles.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Migrator.V2/Migrations/007_notification_delivery_guards.sql" Link="Migrations/007_notification_delivery_guards.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Migrator.V2/Migrations/008_force_complete_tenant_rls.sql" Link="Migrations/008_force_complete_tenant_rls.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../SanSo.Migrator.V2/Migrations/009_outbox_worker_leases.sql" Link="Migrations/009_outbox_worker_leases.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Migrations/010_file_import_projection.sql" Link="Migrations/010_file_import_projection.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

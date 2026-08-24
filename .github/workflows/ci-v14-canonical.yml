@@ -1,0 +1,61 @@
+name: ci-v14-canonical
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  canonical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: sanso_v14
+          POSTGRES_USER: sanso_ci
+          POSTGRES_PASSWORD: ci-ephemeral-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sanso_ci -d sanso_v14"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      SANSO_POSTGRES: Host=127.0.0.1;Port=5432;Database=sanso_v14;Username=sanso_ci;Password=ci-ephemeral-only
+      SANSO_RUNTIME_POSTGRES: Host=127.0.0.1;Port=5432;Database=sanso_v14;Username=sanso_ci;Password=ci-ephemeral-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '9.0.x'}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build canonical solution
+        run: dotnet build SanSo.V10.slnx --configuration Release
+      - name: Verify and apply migrations twice
+        shell: pwsh
+        run: |
+          ./scripts/verify-migration-manifest-v13.ps1
+          dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
+          dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
+      - name: Backend live tests
+        run: dotnet test SanSo.V10.slnx --no-build --configuration Release
+      - name: Verify OpenAPI
+        shell: pwsh
+        run: ./scripts/verify-openapi-v14.ps1
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend unit and production build
+        working-directory: frontend
+        run: |
+          npm test
+          npm run build
+      - name: Scan production client artifact
+        shell: pwsh
+        run: ./scripts/scan-client-secrets-v2.ps1
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Browser journeys and accessibility
+        working-directory: frontend
+        run: npm run test:e2e

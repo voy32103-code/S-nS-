@@ -1,0 +1,1 @@
+$ErrorActionPreference='Stop';$path='README.md';$text=Get-Content -LiteralPath $path -Raw -Encoding UTF8;$text=$text.Replace('docs/completion-audit-2026-08-24-v31.md','docs/completion-audit-2026-08-24-v32.md');[System.IO.File]::WriteAllText((Join-Path(Get-Location)$path),$text,[System.Text.UTF8Encoding]::new($false));'README_LATEST_AUDIT_V32=1'

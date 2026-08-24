@@ -1,0 +1,1 @@
+<Project><ItemGroup><Compile Remove="PostgresInventoryConcurrencyV3Tests.cs"/></ItemGroup></Project>

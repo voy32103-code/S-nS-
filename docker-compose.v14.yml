@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sanso
+      POSTGRES_USER: sanso
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.v14.example to .env and change the local password}
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanso -d sanso"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrator:
+    build:
+      context: .
+      dockerfile: backend/SanSo.Migrator.V8/Dockerfile
+    environment:
+      SANSO_POSTGRES: Host=postgres;Port=5432;Database=sanso;Username=sanso;Password=${POSTGRES_PASSWORD}
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+  api:
+    build:
+      context: .
+      dockerfile: backend/SanSo.Api.V6/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=sanso;Username=sanso;Password=${POSTGRES_PASSWORD}
+      SANSO_FIELD_ENCRYPTION_KEY_BASE64: ${SANSO_FIELD_ENCRYPTION_KEY_BASE64:?set a local 32-byte Base64 key}
+      SANSO_FIELD_ENCRYPTION_KEY_VERSION: ${SANSO_FIELD_ENCRYPTION_KEY_VERSION:-local-v1}
+    ports: ["5080:8080"]
+    depends_on:
+      migrator: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5080}
+    ports: ["5176:8080"]
+    depends_on:
+      api: {condition: service_healthy}
+volumes:
+  pgdata: {}
+

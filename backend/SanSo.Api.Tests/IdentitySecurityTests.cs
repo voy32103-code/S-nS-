@@ -1,0 +1,10 @@
+using SanSo.Api.Modules;
+namespace SanSo.Api.Tests;
+public class IdentitySecurityTests
+{
+ [Fact]public void OwnerLoginRequiresMfa(){var identity=new IdentityService();Assert.Throws<UnauthorizedAccessException>(()=>identity.Login("owner.an-nhien@example.invalid","Demo-Only-Password-2026!","tenant-an-nhien"));}
+ [Fact]public void TotpOwnerSessionIsTenantBoundAndRevocable(){var identity=new IdentityService();var secret=IdentityService.GenerateTotpSecret();var user=identity.Register("owner2@example.invalid","Owner 2","Long-Safe-Password-2026!",secret);identity.AddMembership("t1",user.Id,OrgRole.Owner);var session=identity.Login(user.Email,"Long-Safe-Password-2026!","t1",IdentityService.CurrentTotp(secret));Assert.Equal("t1",identity.Authenticate(session.Token,"t1").TenantId);Assert.Throws<UnauthorizedAccessException>(()=>identity.Authenticate(session.Token,"t2"));identity.Revoke(session.Token);Assert.Throws<UnauthorizedAccessException>(()=>identity.Authenticate(session.Token,"t1"));}
+ [Fact]public void MembershipRemovalRevokesExistingSession(){var identity=new IdentityService();var user=identity.Register("ops@example.invalid","Ops","Long-Safe-Password-2026!");identity.AddMembership("t1",user.Id,OrgRole.Ops);var session=identity.Login(user.Email,"Long-Safe-Password-2026!","t1");identity.RemoveMembership("t1",user.Id);Assert.Throws<UnauthorizedAccessException>(()=>identity.Authenticate(session.Token,"t1"));}
+ [Theory][InlineData(OrgRole.Warehouse,"tax.review",false)][InlineData(OrgRole.Accountant,"tax.review",true)][InlineData(OrgRole.Admin,"inventory.write",true)][InlineData(OrgRole.Ops,"billing.manage",false)]public void RbacIsDenyByDefault(OrgRole role,string permission,bool expected)=>Assert.Equal(expected,IdentityService.Allows(role,permission));
+ [Fact]public void AuditChainDetectsSensitiveReasonAndStaysValid(){var audit=new AuditTrail();audit.Append("t1","u1","LOGIN","SESSION","s1","authenticated","c1");Assert.Throws<ArgumentException>(()=>audit.Append("t1","u1","SENSITIVE_EXPORT","EXPORT","e1","","c2"));audit.Append("t1","u1","SENSITIVE_EXPORT","EXPORT","e1","month-end review","c3");Assert.True(audit.VerifyChain());}
+}

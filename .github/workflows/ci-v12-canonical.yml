@@ -30,7 +30,18 @@ jobs:
           dotnet run --project backend/SanSo.Migrator.V4 --no-build --configuration Release
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U sanso_ci -d sanso_v12 -f scripts/verify-postgres-tenant-rls-v5.sql
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U sanso_ci -d sanso_v12 -f scripts/verify-import-projection-v5.sql
-          dotnet test SanSo.V6.slnx --no-build --configuration Release --maxcpucount:1
+      - name: Core API tests
+        run: dotnet test backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj --no-build --configuration Release
+      - name: API V2 tests
+        run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release
+      - name: API V5 tests
+        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release
+      - name: API V6 tests
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release
+      - name: Import tests
+        run: dotnet test backend/SanSo.Import.Tests/SanSo.Import.Tests.csproj --no-build --configuration Release
+      - name: Worker tests
+        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release
       - name: Frontend and browser gates
         run: |
           cd frontend

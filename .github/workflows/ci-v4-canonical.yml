@@ -28,8 +28,16 @@ jobs:
         with: {node-version: '22', cache: 'npm', cache-dependency-path: "**/package-lock.json"}
       - name: Restore and build canonical solution
         run: dotnet restore SanSo.V4.slnx && dotnet build SanSo.V4.slnx --no-restore --configuration Release
-      - name: Unit and HTTP tests
-        run: dotnet test SanSo.V4.slnx --no-build --configuration Release
+      - name: Core API tests
+        run: dotnet test backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj --no-build --configuration Release
+      - name: API V2 tests
+        run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release
+      - name: API V4 tests
+        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release
+      - name: Import tests
+        run: dotnet test backend/SanSo.Import.Tests/SanSo.Import.Tests.csproj --no-build --configuration Release
+      - name: Worker tests
+        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release
       - name: Verify migration and OpenAPI manifests
         shell: pwsh
         run: |

@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '9.0.x'}
       - uses: github/codeql-action/init@v3
         with: {languages: csharp,javascript-typescript}
+      - name: Build canonical .NET solution for CodeQL
+        run: dotnet build SanSo.sln --configuration Release
       - uses: github/codeql-action/analyze@v3

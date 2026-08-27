@@ -97,9 +97,18 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Browser journeys and accessibility
+      - name: Browser login accessibility
         working-directory: frontend
-        run: npm run test:e2e
+        run: npx playwright test accessibility-v8.spec.ts
+      - name: Browser authenticated tabs accessibility
+        working-directory: frontend
+        run: npx playwright test accessibility-tabs-v8.spec.ts
+      - name: Browser core journeys
+        working-directory: frontend
+        run: npx playwright test core-v8.spec.ts
+      - name: Browser viewer authorization journey
+        working-directory: frontend
+        run: npx playwright test viewer-v8.spec.ts
       - name: Install E2E harness dependencies
         working-directory: e2e
         run: npm ci

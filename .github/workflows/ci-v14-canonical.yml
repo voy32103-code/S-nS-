@@ -99,10 +99,10 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Browser login accessibility
         working-directory: frontend
-        run: npx playwright test accessibility-v8.spec.ts --grep "^login has no WCAG A/AA violations$"
+        run: npx playwright test accessibility-v8.spec.ts --grep "login has no WCAG A/AA violations"
       - name: Browser authenticated overview accessibility
         working-directory: frontend
-        run: npx playwright test accessibility-v8.spec.ts --grep "^authenticated overview has no WCAG A/AA violations$"
+        run: npx playwright test accessibility-v8.spec.ts --grep "authenticated overview has no WCAG A/AA violations"
       - name: Browser authenticated tabs accessibility
         working-directory: frontend
         run: npx playwright test accessibility-tabs-v8.spec.ts

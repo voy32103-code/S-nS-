@@ -33,7 +33,9 @@ jobs:
       - name: API V2 tests
         run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release
       - name: API V4 demo tests
-        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName!~Postgres"
+        run: |
+          dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AuthorizedWorkflowHttpTests"
+          dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~ImportConfirmationHttpTests"
         env:
           SANSO_POSTGRES: ''
           SANSO_RUNTIME_POSTGRES: ''

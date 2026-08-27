@@ -9,7 +9,7 @@ DECLARE
   projected_order_id uuid;
   projected_ledger_id uuid;
   projected_period_id uuid;
-  period_key text;
+  target_period_key text;
 BEGIN
   IF NEW.source<>'file-import' OR NEW.event_type<>'ORDER_IMPORTED' THEN RETURN NEW; END IF;
 
@@ -32,10 +32,10 @@ BEGIN
   ON CONFLICT(organization_id,source_key) DO NOTHING RETURNING id INTO projected_ledger_id;
   IF projected_ledger_id IS NULL THEN SELECT id INTO projected_ledger_id FROM ledger_lines WHERE organization_id=NEW.organization_id AND source_key='file-sale:'||NEW.source_event_id; END IF;
 
-  period_key:=to_char(occurred AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM');
+  target_period_key:=to_char(occurred AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM');
   INSERT INTO tax_periods(organization_id,period_key,status,input_checksum)
-  VALUES(NEW.organization_id,period_key,'NEEDS_REVIEW',NEW.checksum)
-  ON CONFLICT(organization_id,period_key) DO UPDATE SET status=CASE WHEN tax_periods.status='DRAFT' THEN 'NEEDS_REVIEW' ELSE tax_periods.status END
+  VALUES(NEW.organization_id,target_period_key,'NEEDS_REVIEW',NEW.checksum)
+  ON CONFLICT ON CONSTRAINT tax_periods_organization_id_period_key_key DO UPDATE SET status=CASE WHEN tax_periods.status='DRAFT' THEN 'NEEDS_REVIEW' ELSE tax_periods.status END
   RETURNING id INTO projected_period_id;
 
   INSERT INTO tax_calculations(organization_id,period_id,ledger_line_id,rule_version_id,status,basis_amount,calculated_amount,source_ref,effective_date,explanation,input_snapshot)

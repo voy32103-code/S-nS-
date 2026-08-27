@@ -56,8 +56,27 @@ jobs:
         run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresInventoryConcurrencyV4Tests" --logger "console;verbosity=normal"
       - name: API V5 inventory HTTP concurrency test
         run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresInventoryHttpV5Tests" --logger "console;verbosity=normal"
-      - name: API V6 live tests
-        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: API V6 non-PostgreSQL tests
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName!~Postgres" --logger "console;verbosity=normal"
+      - name: API V6 inventory lifecycle live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresInventoryLifecycleHttpV6Tests" --logger "console;verbosity=normal"
+      - name: API V6 notification HTTP live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresNotificationHttpV8Tests" --logger "console;verbosity=normal"
+      - name: API V6 notification persistence live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresNotificationPersistenceV2Tests" --logger "console;verbosity=normal"
+      - name: API V6 onboarding HTTP live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresOnboardingHttpV9Tests" --logger "console;verbosity=normal"
+      - name: API V6 onboarding persistence live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresOnboardingPersistenceV1Tests" --logger "console;verbosity=normal"
+      - name: API V6 report export HTTP live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresReportExportHttpV12Tests" --logger "console;verbosity=normal"
+      - name: API V6 report export XLSX live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresReportExportXlsxV14Tests" --logger "console;verbosity=normal"
+      - name: API V6 settlement import live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresSettlementImportHttpV10Tests" --logger "console;verbosity=normal"
+      - name: API V6 settlement preview live test
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresSettlementPreviewWorkflowV13Tests" --logger "console;verbosity=normal"
+
       - name: Verify OpenAPI
         shell: pwsh
         run: ./scripts/verify-openapi-v14.ps1

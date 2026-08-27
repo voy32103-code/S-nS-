@@ -16,8 +16,9 @@ public sealed class PostgresNotificationPersistenceV2Tests
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();
         var role = $"notify_{Guid.NewGuid():N}";
-        await SeedAndGrant(adminCs, tenantA, tenantB, role);
-        var csb = new NpgsqlConnectionStringBuilder(adminCs) { Username = role };
+        var rolePassword = $"test_{Guid.NewGuid():N}";
+        await SeedAndGrant(adminCs, tenantA, tenantB, role, rolePassword);
+        var csb = new NpgsqlConnectionStringBuilder(adminCs) { Username = role, Password = rolePassword };
         await using var source = NpgsqlDataSource.Create(csb.ConnectionString);
         var store = new Store(source);
         var window = new DateTimeOffset(2026, 8, 24, 10, 0, 0, TimeSpan.Zero);
@@ -41,13 +42,13 @@ public sealed class PostgresNotificationPersistenceV2Tests
         Assert.Equal(DeliveryStatus.Acknowledged, afterRestart[0].Status);
     }
 
-    private static async Task SeedAndGrant(string cs, Guid tenantA, Guid tenantB, string role)
+    private static async Task SeedAndGrant(string cs, Guid tenantA, Guid tenantB, string role, string rolePassword)
     {
         await using var c = new NpgsqlConnection(cs);
         await c.OpenAsync();
         await using var tx = await c.BeginTransactionAsync();
         await Execute(c, tx, "INSERT INTO organizations(id,slug,name) VALUES($1,$2,'Notification A'),($3,$4,'Notification B')", tenantA, $"notify-a-{tenantA:N}", tenantB, $"notify-b-{tenantB:N}");
-        await Execute(c, tx, $"CREATE ROLE {role} LOGIN");
+        await Execute(c, tx, $"CREATE ROLE {role} LOGIN PASSWORD '{rolePassword}'");
         await Execute(c, tx, $"GRANT SELECT,INSERT,UPDATE ON notification_deliveries TO {role}");
         await tx.CommitAsync();
     }

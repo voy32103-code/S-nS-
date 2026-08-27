@@ -21,6 +21,7 @@ MVP đã có vertical slice chạy được với PostgreSQL, migration 001–01
 | TECH-08 | Manual accessibility coverage | Playwright/Axe canonical đã pass 10/10 | Kiểm tra bàn phím, screen reader, zoom/reflow, reduced motion trên browser mục tiêu và lưu biên bản |
 | TECH-09 | Clean-machine onboarding proof | README có lệnh rõ; test hiện tại dùng môi trường đã chuẩn bị | Clone mới trên máy/runner sạch, làm đúng README, migrate/seed/build/test/E2E thành công |
 | TECH-10 | Production security assessment | Có automated authorization, tenant, upload/formula, client-secret và safe-error tests | DAST/pentest có phạm vi, webhook spoof/replay drill, log/PII review và remediation report |
+| TECH-11 | Đưa workflow CI V14 canonical về trạng thái xanh | Local fresh PostgreSQL suite đã pass 112/112; GitHub đã pass build, migration, core, import, Worker, API V2 và API V5; đang tách API V6 theo lớp tại commit `6f77140` để định vị lỗi | Tất cả gate V14 trên GitHub Actions pass ổn định; lưu link run xanh và xử lý/loại bỏ workflow legacy gây nhiễu sau khi rà soát |
 
 ## 3. Pháp lý và TaxTech chưa hoàn thành
 

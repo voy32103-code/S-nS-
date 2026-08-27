@@ -41,7 +41,7 @@ jobs:
           dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
           dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
       - name: Backend live tests
-        run: dotnet test SanSo.V10.slnx --no-build --configuration Release
+        run: dotnet test SanSo.V10.slnx --no-build --configuration Release --maxcpucount:1 --logger "console;verbosity=normal"
       - name: Verify OpenAPI
         shell: pwsh
         run: ./scripts/verify-openapi-v14.ps1

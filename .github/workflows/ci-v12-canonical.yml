@@ -30,7 +30,7 @@ jobs:
           dotnet run --project backend/SanSo.Migrator.V4 --no-build --configuration Release
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U sanso_ci -d sanso_v12 -f scripts/verify-postgres-tenant-rls-v5.sql
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U sanso_ci -d sanso_v12 -f scripts/verify-import-projection-v5.sql
-          dotnet test SanSo.V6.slnx --no-build --configuration Release
+          dotnet test SanSo.V6.slnx --no-build --configuration Release --maxcpucount:1
       - name: Frontend and browser gates
         run: |
           cd frontend

@@ -31,6 +31,8 @@ jobs:
         working-directory: e2e
       - run: npm test && npm run test:browser && npm audit --audit-level=high
         working-directory: e2e
+        env:
+          SANSO_POSTGRES: ''
       - name: Verify seed and tenant RLS are present
         run: |
           test "$(psql "$SANSO_POSTGRES" -Atc "select count(*) from raw_events where source='DEMO'")" = "12"

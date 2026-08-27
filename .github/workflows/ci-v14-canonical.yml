@@ -40,8 +40,18 @@ jobs:
           ./scripts/verify-migration-manifest-v13.ps1
           dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
           dotnet run --project backend/SanSo.Migrator.V8 --no-build --configuration Release
-      - name: Backend live tests
-        run: dotnet test SanSo.V10.slnx --no-build --configuration Release --maxcpucount:1 --logger "console;verbosity=normal"
+      - name: Backend core tests
+        run: dotnet test backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: Import tests
+        run: dotnet test backend/SanSo.Import.Tests/SanSo.Import.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: Worker live tests
+        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: API V2 tests
+        run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: API V5 live tests
+        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: API V6 live tests
+        run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
       - name: Verify OpenAPI
         shell: pwsh
         run: ./scripts/verify-openapi-v14.ps1

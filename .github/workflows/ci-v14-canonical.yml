@@ -44,8 +44,10 @@ jobs:
         run: dotnet test backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
       - name: Import tests
         run: dotnet test backend/SanSo.Import.Tests/SanSo.Import.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
-      - name: Worker live tests
-        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: Worker unit tests
+        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~OutboxProcessorTests" --logger "console;verbosity=normal"
+      - name: Worker PostgreSQL live tests
+        run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresOutboxRuntimeV3Tests" --logger "console;verbosity=normal"
       - name: API V2 tests
         run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
       - name: API V5 live tests

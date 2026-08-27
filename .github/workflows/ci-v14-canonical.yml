@@ -29,6 +29,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Audit canonical .NET dependencies
+        shell: pwsh
+        run: ./scripts/scan-dotnet-vulnerabilities-v14.ps1
       - name: Build canonical solution
         run: dotnet build SanSo.V10.slnx --configuration Release
       - name: Verify and apply migrations twice
@@ -45,6 +48,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
       - name: Frontend unit and production build
         working-directory: frontend
         run: |
@@ -59,3 +65,9 @@ jobs:
       - name: Browser journeys and accessibility
         working-directory: frontend
         run: npm run test:e2e
+      - name: Install E2E harness dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Audit E2E harness dependencies
+        working-directory: e2e
+        run: npm audit --audit-level=high

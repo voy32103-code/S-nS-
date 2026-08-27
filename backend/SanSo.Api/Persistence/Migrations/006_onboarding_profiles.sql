@@ -6,7 +6,7 @@ CREATE TABLE onboarding_profiles (
   timezone text NOT NULL DEFAULT 'Asia/Ho_Chi_Minh' CHECK(timezone='Asia/Ho_Chi_Minh'), source_mode text,
   backfill_from date, mapped_sku_count integer NOT NULL DEFAULT 0 CHECK(mapped_sku_count>=0),
   opening_balances jsonb NOT NULL DEFAULT '[]'::jsonb, disclaimer_version text, disclaimer_confirmed_at timestamptz,
-  disclaimer_confirmed_by uuid REFERENCES users(id), first_reconciliation_id uuid REFERENCES reconciliations(id),
+  disclaimer_confirmed_by uuid REFERENCES users(id), first_reconciliation_id uuid REFERENCES reconciliation_runs(id),
   completed_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK((disclaimer_confirmed_at IS NULL)=(disclaimer_version IS NULL)),
   CHECK(current_step<8 OR (first_reconciliation_id IS NOT NULL AND completed_at IS NOT NULL))

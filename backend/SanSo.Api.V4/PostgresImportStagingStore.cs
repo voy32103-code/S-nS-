@@ -34,9 +34,9 @@ public sealed class PostgresImportStagingStore(NpgsqlDataSource dataSource)
 INSERT INTO raw_events(organization_id,source,source_event_id,event_type,schema_version,payload,checksum)
 SELECT organization_id,'file-import',event_id,'ORDER_IMPORTED','1',normalized_payload,encode(sha256(convert_to(normalized_payload::text,'UTF8')),'hex')
 FROM import_staging_rows WHERE organization_id=$1::uuid AND batch_id=$2::uuid AND errors='[]'::jsonb
-ON CONFLICT(organization_id,source,source_event_id) DO NOTHING;
-UPDATE import_staging_batches SET status='CONFIRMED',confirmed_at=now(),confirmed_by=$3::uuid WHERE organization_id=$1::uuid AND id=$2::uuid;
-""";post.Parameters.AddWithValue(tenant);post.Parameters.AddWithValue(id);post.Parameters.AddWithValue(actorId);await post.ExecuteNonQueryAsync(ct);
+ON CONFLICT(organization_id,source,source_event_id) DO NOTHING
+""";post.Parameters.AddWithValue(tenant);post.Parameters.AddWithValue(id);await post.ExecuteNonQueryAsync(ct);
+        await using var confirm=c.CreateCommand();confirm.Transaction=tx;confirm.CommandText="UPDATE import_staging_batches SET status='CONFIRMED',confirmed_at=now(),confirmed_by=$3::uuid WHERE organization_id=$1::uuid AND id=$2::uuid";confirm.Parameters.AddWithValue(tenant);confirm.Parameters.AddWithValue(id);confirm.Parameters.AddWithValue(actorId);await confirm.ExecuteNonQueryAsync(ct);
         await using var count=c.CreateCommand();count.Transaction=tx;count.CommandText="SELECT count(*) FILTER(WHERE errors='[]'::jsonb)::int,count(*) FILTER(WHERE errors<>'[]'::jsonb)::int FROM import_staging_rows WHERE organization_id=$1::uuid AND batch_id=$2::uuid";count.Parameters.AddWithValue(tenant);count.Parameters.AddWithValue(id);await using var counts=await count.ExecuteReaderAsync(ct);await counts.ReadAsync(ct);var accepted=counts.GetInt32(0);var rejected=counts.GetInt32(1);await counts.CloseAsync();await tx.CommitAsync(ct);return new(id,checksum,accepted,rejected,false);
     }
 

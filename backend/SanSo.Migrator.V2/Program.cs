@@ -31,7 +31,7 @@ try
         await using var transaction = await connection.BeginTransactionAsync();
         await using var apply = connection.CreateCommand();
         apply.Transaction = transaction;
-        apply.CommandText = sql;
+        apply.CommandText = RemoveOuterTransaction(sql);
         await apply.ExecuteNonQueryAsync();
         await using var record = connection.CreateCommand();
         record.Transaction = transaction;
@@ -48,4 +48,14 @@ finally
     await using var unlock = connection.CreateCommand();
     unlock.CommandText = "SELECT pg_advisory_unlock(7482152027)";
     await unlock.ExecuteNonQueryAsync();
+}
+
+static string RemoveOuterTransaction(string sql)
+{
+    var trimmed = sql.Trim();
+    const string begin = "BEGIN;";
+    const string commit = "COMMIT;";
+    return trimmed.StartsWith(begin, StringComparison.OrdinalIgnoreCase) && trimmed.EndsWith(commit, StringComparison.OrdinalIgnoreCase)
+        ? trimmed[begin.Length..^commit.Length]
+        : sql;
 }

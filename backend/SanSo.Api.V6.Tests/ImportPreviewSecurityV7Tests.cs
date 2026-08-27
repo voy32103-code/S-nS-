@@ -11,7 +11,7 @@ namespace SanSo.Api.V6.Tests;
 public sealed class ImportPreviewSecurityV7Tests
 {
     private static WebApplicationFactory<V7Program> Factory() =>
-        new WebApplicationFactory<V7Program>().WithWebHostBuilder(x => x.UseEnvironment("Development"));
+        new WebApplicationFactory<V7Program>().WithWebHostBuilder(x => x.UseEnvironment("Development").UseSetting("ConnectionStrings:Postgres", string.Empty));
 
     [Fact]
     public async Task NonMultipartRequestIsRejected()

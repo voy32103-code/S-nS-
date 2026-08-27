@@ -12,11 +12,12 @@ using SanSo.Import;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 var cs = builder.Configuration.GetConnectionString("Postgres") ?? Environment.GetEnvironmentVariable("SANSO_POSTGRES");
+if (string.IsNullOrWhiteSpace(cs)) cs = null;
 var fieldKeyBase64 = Environment.GetEnvironmentVariable("SANSO_FIELD_ENCRYPTION_KEY_BASE64");
 var fieldKeyVersion = Environment.GetEnvironmentVariable("SANSO_FIELD_ENCRYPTION_KEY_VERSION");
 if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(cs))
     throw new InvalidOperationException("Production requires PostgreSQL");
-if (cs is not null)
+if (!string.IsNullOrWhiteSpace(cs))
 {
     builder.Services.AddSingleton(NpgsqlDataSource.Create(cs));
     builder.Services.AddSingleton<PostgresCommerceStore>();
@@ -67,7 +68,7 @@ SessionPrincipal? Principal(HttpRequest r)
     catch { return null; }
 }
 SessionPrincipal Require(HttpRequest r, string permission) => IdentityEndpoints.Require(r, app.Services.GetRequiredService<IdentityService>(), permission);
-bool Db() => cs is not null;
+bool Db() => !string.IsNullOrWhiteSpace(cs);
 PostgresCommerceStore Pg() => app.Services.GetRequiredService<PostgresCommerceStore>();
 PostgresImportStagingStoreV2 Imports() => app.Services.GetRequiredService<PostgresImportStagingStoreV2>();
 PostgresInventoryStoreV4 Inventory() => new(app.Services.GetRequiredService<NpgsqlDataSource>());

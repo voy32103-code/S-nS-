@@ -50,8 +50,12 @@ jobs:
         run: dotnet test backend/SanSo.Worker.Tests/SanSo.Worker.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresOutboxRuntimeV3Tests" --logger "console;verbosity=normal"
       - name: API V2 tests
         run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
-      - name: API V5 live tests
-        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+      - name: API V5 import projection live test
+        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresImportProjectionHttpV5Tests" --logger "console;verbosity=normal"
+      - name: API V5 inventory store concurrency test
+        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresInventoryConcurrencyV4Tests" --logger "console;verbosity=normal"
+      - name: API V5 inventory HTTP concurrency test
+        run: dotnet test backend/SanSo.Api.V5.Tests/SanSo.Api.V5.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~PostgresInventoryHttpV5Tests" --logger "console;verbosity=normal"
       - name: API V6 live tests
         run: dotnet test backend/SanSo.Api.V6.Tests/SanSo.Api.V6.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
       - name: Verify OpenAPI

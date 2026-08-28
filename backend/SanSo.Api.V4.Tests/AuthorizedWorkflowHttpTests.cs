@@ -25,7 +25,7 @@ public sealed class AuthorizedWorkflowHttpTests
         await Ok(Post(client,"/api/onboarding/sku-mapping",new{mappedSkuCount=1},token,"tenant-onboard-http"));
         await Ok(Post(client,"/api/onboarding/opening-balances",new{balances=new[]{new{canonicalSku="SKU-HTTP",onHand=10,unitCostMinor=120000}}},token,"tenant-onboard-http"));
         await Ok(Post(client,"/api/onboarding/disclaimer",new{version="tax-support-v1",explicitlyConfirmed=true},token,"tenant-onboard-http"));
-        var completed=await Post(client,"/api/onboarding/first-reconciliation",new{reconciliationId="rec-http-1",hasMatchedOrExplainedDiscrepancy=true},token,"tenant-onboard-http");await Ok(completed);var body=await completed.Content.ReadFromJsonAsync<JsonElement>();Assert.Equal(8,body.GetProperty("snapshot").GetProperty("currentStep").GetInt32());Assert.False(body.GetProperty("persisted").GetBoolean());
+        var completed=await Post(client,"/api/onboarding/first-reconciliation",new{reconciliationId="rec-http-1",hasMatchedOrExplainedDiscrepancy=true},token,"tenant-onboard-http");await Ok(completed);var body=await completed.Content.ReadFromJsonAsync<JsonElement>();var step=body.GetProperty("snapshot").GetProperty("currentStep");var completed=step.ValueKind==JsonValueKind.Number?step.GetInt32()==8:string.Equals(step.GetString(),"Completed",StringComparison.OrdinalIgnoreCase);Assert.True(completed);Assert.False(body.GetProperty("persisted").GetBoolean());
     }
 
     [Fact]

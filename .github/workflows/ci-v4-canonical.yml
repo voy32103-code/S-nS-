@@ -37,16 +37,19 @@ jobs:
         env:
           SANSO_POSTGRES: ''
           SANSO_RUNTIME_POSTGRES: ''
+          ConnectionStrings__Postgres: ''
       - name: API V4 ViewerCannotManageOnboardingOrNotifications
         run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~ViewerCannotManageOnboardingOrNotifications"
         env:
           SANSO_POSTGRES: ''
           SANSO_RUNTIME_POSTGRES: ''
+          ConnectionStrings__Postgres: ''
       - name: API V4 AuthorizedNotificationMasksEmailAndCopilotRefusesTaxDecision
         run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AuthorizedNotificationMasksEmailAndCopilotRefusesTaxDecision"
         env:
           SANSO_POSTGRES: ''
           SANSO_RUNTIME_POSTGRES: ''
+          ConnectionStrings__Postgres: ''
       - name: API V4 PostgreSQL tests
         run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~Postgres"
       - name: Import tests

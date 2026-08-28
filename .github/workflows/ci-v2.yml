@@ -24,7 +24,7 @@ jobs:
         with: {node-version: '22'}
       - run: dotnet build SanSo.sln
       - run: dotnet test SanSo.sln --no-build
-      - run: dotnet run --project backend/SanSo.Migrator --no-build
+      - run: dotnet build backend/SanSo.Migrator/SanSo.Migrator.csproj --configuration Release`r`n      - run: dotnet run --project backend/SanSo.Migrator --no-build
       - run: npm ci && npm test && npm run build && npm audit --audit-level=high
         working-directory: frontend
       - run: npm ci && npx playwright install --with-deps chromium

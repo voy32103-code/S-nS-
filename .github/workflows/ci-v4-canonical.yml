@@ -32,16 +32,21 @@ jobs:
         run: dotnet test backend/SanSo.Api.Tests/SanSo.Api.Tests.csproj --no-build --configuration Release
       - name: API V2 tests
         run: dotnet test backend/SanSo.Api.V2.Tests/SanSo.Api.V2.Tests.csproj --no-build --configuration Release
-      - name: API V4 authorized workflow tests
-        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AuthorizedWorkflowHttpTests"
+      - name: API V4 MfaOwnerCompletesOnboardingHttpStateMachine
+        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~MfaOwnerCompletesOnboardingHttpStateMachine"
         env:
-          SANSO_POSTGRES: '
-          SANSO_RUNTIME_POSTGRES: '
-      - name: API V4 import confirmation tests
-        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~ImportConfirmationHttpTests"
+          SANSO_POSTGRES: ''
+          SANSO_RUNTIME_POSTGRES: ''
+      - name: API V4 ViewerCannotManageOnboardingOrNotifications
+        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~ViewerCannotManageOnboardingOrNotifications"
         env:
-          SANSO_POSTGRES: '
-          SANSO_RUNTIME_POSTGRES: '
+          SANSO_POSTGRES: ''
+          SANSO_RUNTIME_POSTGRES: ''
+      - name: API V4 AuthorizedNotificationMasksEmailAndCopilotRefusesTaxDecision
+        run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AuthorizedNotificationMasksEmailAndCopilotRefusesTaxDecision"
+        env:
+          SANSO_POSTGRES: ''
+          SANSO_RUNTIME_POSTGRES: ''
       - name: API V4 PostgreSQL tests
         run: dotnet test backend/SanSo.Api.V4.Tests/SanSo.Api.V4.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~Postgres"
       - name: Import tests
